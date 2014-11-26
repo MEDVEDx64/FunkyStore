@@ -8,6 +8,7 @@ import base64
 from datetime import datetime
 import cookielib
 import money
+import os
 
 PORT = config['port']
 HOST = config['host']
@@ -17,7 +18,7 @@ db = None
 
 class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_start(self):
-		self.wfile.write('<html><head><title>Funky Trade</title></head>')
+		self.wfile.write('<html><head><title>Funky Trade</title><link rel="stylesheet" type="text/css" href="storage/style.css" /></head>')
 		self.wfile.write('<body><center>\n')
 
 	def html_end(self):
@@ -65,7 +66,20 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 		url = urlparse.urlparse(self.path)
 
-		if url.path == '/':
+		if url.path.startswith('/storage'):
+			p = url.path[1:]
+			if '/..' in p or '\\..' in p:
+				self.send_error(400, 'WTF')
+				return
+
+			if os.path.exists(p) and os.path.isfile(p):
+				self.send_response(200, 'OK')
+				self.end_headers()
+				self.wfile.write(open(p, 'rb').read())
+			else:
+				self.send_error(404, 'Not Found')
+
+		elif url.path == '/':
 			self.send_response(200, 'OK')
 			self.end_headers()
 			self.html_start()
