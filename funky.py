@@ -7,6 +7,7 @@ from os import urandom
 import base64
 from datetime import datetime
 import cookielib
+import money
 
 PORT = config['port']
 HOST = config['host']
@@ -44,6 +45,19 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write('<html><head><meta http-equiv="refresh" content="1;url=' + url +'"><script type="text/javascript">')
 		self.wfile.write('window.location.href = "' + url +'"</script></head></html>\n')
 
+	def html_generic(self, username = None):
+		u = username
+		if not u:
+			if 'cookie' in self.headers:
+				u = get_user_by_cookie(self.headers['cookie'])
+
+		if not u:
+			self.wfile.write('<i>Welcome, Stranger!</i>\n')
+			return
+
+		self.wfile.write('<b>Account</b>: ' + u +', <b>Balance:</b> ' + str(money.get_balance(db, u)) + '\n')
+		self.wfile.write(' (<a href="/logout">Logout</a>)<hr>\n')
+
 	def do_GET(self):
 		if not self.headers['host'] == HOST:
 			self.send_error(404, 'Nothing')
@@ -63,22 +77,69 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				if h == 'cookie':
 					cookie = self.headers['cookie']
 
-			if cookie:
-				cs = cookie.split(';')
-				cookie = []
-				for c in cs:
-					cookie.append(c.strip())
-				d = db['sessions'].find_one({'cookie': cookie[-1], 'open': True})
-				if d:
-					username = d['login']
-
-			if username:
-				self.wfile.write('good<br><a href="/logout">Log out</a>\n')
-			else:
+			username = get_user_by_cookie(cookie)
+			self.html_generic(username)
+			if not username:
 				self.html_login()
 
 			self.html_block_end()
 			self.html_end()
+
+		elif url.path == '/message':
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+
+			q = urlparse.parse_qs(url.query)
+			if 'm' in q:
+				self.wfile.write(q['m'][0])
+			else:
+				self.wfile.write('Nothing!')
+
+			self.html_end()
+
+		elif url.path == '/money':
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+			self.html_generic()
+
+			if not 'cookie' in self.headers:
+				self.html_redirect('/')
+				self.html_end()
+				return
+
+			u = get_user_by_cookie(self.headers['cookie'])
+			if not u:
+				self.html_redirect('/')
+				self.html_end()
+				return
+
+			q = urlparse.parse_qs(url.query)
+			if 'action' in q:
+				if q['action'][0] == 'list':
+					PAGESIZE = 50
+					self.html_block_start()
+					self.wfile.write('Transactions:\n')
+					page = 0
+					if 'page' in q:
+						page = int(q['page'][0])
+					c = db['transactions'].find({'$or': [{'source': u}, {'destination': u}]}).sort({'timestamp': -1}) \
+						.skip(page*PAGESIZE).limit(PAGESIZE)
+
+					while c.has_next():
+						d = c.next()
+						self.wfile.write('<b>From</b> ' + c['source'] + ' <b>to</b> ' + c['destination'] + ' <b>transfered</b> ')
+						self.wfile.write(str(c['amount']) + ' Funks at ' + str(c['timestamp']) + '<br>\n')
+
+				self.html_block_end()
+
+			else:
+				self.wfile.write('Transfer some Funks to another account\n')
+				self.wfile.write('<form name="transfer" method="post" action="transfer">')
+				self.wfile.write('Target account: <input type="text" size="60" name="destination">')
+				self.wfile.write('<br>Amount: <input name="amount" type="text" size="20"><br>')
+				self.wfile.write('<input type="submit" value="Transfer"></form>\n')
 
 		elif url.path == '/register':
 			self.send_response(200, 'OK')
@@ -120,9 +181,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		url = urlparse.urlparse(self.path)
 		q = urlparse.parse_qs(url.query)
 		if url.path == '/account':
-			l = int(self.headers['content-length'])
-			data = self.rfile.read(l)
-			data = urlparse.parse_qs(data)
+			data, l = self.get_post_data()
 			if 'login' in data and 'pwd' in data:
 				if q['do'][0] == 'login':
 					acc = db.accounts.find_one({'login': data['login'][0], 'password': data['pwd'][0]})
@@ -140,15 +199,46 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					if acc:
 						self.html_redirect('/register?error=1&message="Account ' + data['login'][0] + ' already exist."')
 					else:
-						db['accounts'].insert({'login': data['login'][0], 'password': data['pwd'][0]})
+						db['accounts'].insert({'login': data['login'][0], 'password': data['pwd'][0], 'money': 0.0, \
+							'flags': ['money_recv', 'money_send']})
 						self.html_redirect('/register?error=0')
 
 				else:
 					self.send_error(400, 'Bad Request')
 			else:
 				self.html_bad_login()
+
+		elif url.path == '/transfer':
+			self.send_response(200, 'OK')
+			self.end_headers()
+			if not 'cookie' in self.headers:
+				self.wfile.write('Not logged in.\n')
+				return
+
+			data, l = self.get_post_data()
+			ok, msg = money.transfer(db, get_user_by_cookie(self.headers['cookie']), data['destination'][0], float(data['amount'][0]))
+			self.html_redirect('/message?m=' + msg)
+
 		else:
 			self.send_error(404, 'Not Found')
+
+	def get_post_data(self):
+		l = int(self.headers['content-length'])
+		data = self.rfile.read(l)
+		data = urlparse.parse_qs(data)
+		return (data, l)
+
+def get_user_by_cookie(cookie):
+	if cookie:
+		cs = cookie.split(';')
+		cookie = []
+		for c in cs:
+			cookie.append(c.strip())
+		d = db['sessions'].find_one({'cookie': cookie[-1], 'open': True})
+		if d:
+			return d['login']
+
+	return None
 
 if __name__ == '__main__':
 	dbclient = pymongo.MongoClient(config['dbUri'])
