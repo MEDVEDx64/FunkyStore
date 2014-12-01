@@ -10,11 +10,14 @@ import cookielib
 import money
 import os
 
+import mcrcon
+
 PORT = config['port']
 HOST = config['host']
 #if not PORT == 80:
 #	HOST += ':' + str(PORT)
 db = None
+rcon = None
 
 class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_start(self):
@@ -36,15 +39,14 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write('<input type="submit" value="Login"></form><a href="register">Create an account</a>')
 
 	def html_bad_login(self):
-		self.send_response(200, 'OK')
-		self.end_headers()
-		self.html_block_start()
-		self.wfile.write("Bad login/password.")
-		self.html_end()
+		self.html_redirect('/message?m=Invalid%20login')
 
 	def html_redirect(self, url):
 		self.wfile.write('<html><head><meta http-equiv="refresh" content="1;url=' + url +'"><script type="text/javascript">')
 		self.wfile.write('window.location.href = "' + url +'"</script></head></html>\n')
+
+	def html_main_menu(self):
+		self.wfile.write('<a href="/">Home</a> <a href="/money">Transfer</a> <a href="/money?action=list">History</a><hr>\n')
 
 	def html_generic(self, username = None):
 		u = username
@@ -58,6 +60,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 		self.wfile.write('<b>Account</b>: ' + u +', <b>Balance:</b> ' + str(money.get_balance(db, u)) + '\n')
 		self.wfile.write(' (<a href="/logout">Logout</a>)<hr>\n')
+		self.html_main_menu()
 
 	def do_GET(self):
 		if not self.headers['host'] == HOST:
@@ -93,7 +96,15 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 			username = get_user_by_cookie(cookie)
 			self.html_generic(username)
-			if not username:
+			if username:
+				for i in db['items'].find({'in_stock': True}):
+					self.html_block_start()
+					self.wfile.write('<form name="buy" style="margin: 0" method="post" action="buy?itemid=' + str(i['item_id']) + '">')
+					self.wfile.write(i['text'] + ' &ndash; <b>' + str(i['price']) + 'f</b> &ndash; <input type="text" size="4"')
+					self.wfile.write('name="amount" value="1"> <input type="submit" value="Buy"></form>\n')
+					self.html_block_end()
+
+			else:
 				self.html_login()
 
 			self.html_block_end()
@@ -110,6 +121,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			else:
 				self.wfile.write('Nothing!')
 
+			self.wfile.write('<p><a href="javascript:history.back()">Back</a> | <a href="/">Home</a></p>')
 			self.html_end()
 
 		elif url.path == '/money':
@@ -123,7 +135,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.html_end()
 				return
 
-			u = get_user_by_cookie(self.headers['cookie'])
+			u = None
+			if 'cookie' in self.headers:
+				u = get_user_by_cookie(self.headers['cookie'])
 			if not u:
 				self.html_redirect('/')
 				self.html_end()
@@ -134,17 +148,17 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				if q['action'][0] == 'list':
 					PAGESIZE = 50
 					self.html_block_start()
-					self.wfile.write('Transactions:\n')
+					self.wfile.write('Transactions:<div class="code_list">\n')
 					page = 0
 					if 'page' in q:
 						page = int(q['page'][0])
-					c = db['transactions'].find({'$or': [{'source': u}, {'destination': u}]}).sort({'timestamp': -1}) \
+					c = db['transactions'].find({'$or': [{'source': u}, {'destination': u}]}).sort('timestamp', -1) \
 						.skip(page*PAGESIZE).limit(PAGESIZE)
 
-					while c.has_next():
-						d = c.next()
-						self.wfile.write('<b>From</b> ' + c['source'] + ' <b>to</b> ' + c['destination'] + ' <b>transfered</b> ')
-						self.wfile.write(str(c['amount']) + ' Funks at ' + str(c['timestamp']) + '<br>\n')
+					for d in c:
+						self.wfile.write('<b>From</b> ' + d['source'] + ' <b>to</b> ' + d['destination'] + ' <b>transfered</b> ')
+						self.wfile.write(str(d['amount']) + ' Funks at ' + str(d['timestamp']) + '<br>\n')
+					self.wfile.write('</div>\n')
 
 				self.html_block_end()
 
@@ -211,7 +225,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				elif q['do'][0] == 'register':
 					acc = db.accounts.find_one({'login': data['login'][0]})
 					if acc:
-						self.html_redirect('/register?error=1&message="Account ' + data['login'][0] + ' already exist."')
+						self.html_redirect('/register?error=1&message=Account ' + data['login'][0] + ' already exist.')
 					else:
 						db['accounts'].insert({'login': data['login'][0], 'password': data['pwd'][0], 'money': 0.0, \
 							'flags': ['money_recv', 'money_send']})
@@ -232,6 +246,43 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			data, l = self.get_post_data()
 			ok, msg = money.transfer(db, get_user_by_cookie(self.headers['cookie']), data['destination'][0], float(data['amount'][0]))
 			self.html_redirect('/message?m=' + msg)
+
+		elif url.path == '/buy':
+			u = None
+			if 'cookie' in self.headers:
+				u = get_user_by_cookie(self.headers['cookie'])
+
+			if u:
+				nick = u
+				nd = db['accounts'].find_one({'login': u}, {'nickname': 1})
+				if nd:
+					nick = nd['nickname']
+
+				if 'itemid' in q:
+					itemid = q['itemid'][0]
+					data, l = self.get_post_data()
+					amount = 1
+					if 'amount' in data:
+						amount = int(data['amount'][0])
+
+					if amount > 0 and amount < 65:
+						d = db['items'].find_one({'item_id': itemid}, {'price': 1})
+						if d:
+							if not db['accounts'].find_one({'login': '__OM_NOM_NOM'}):
+								db['accounts'].insert({'login': '__OM_NOM_NOM', 'money': 0.0, 'password': '0', \
+									'locked': True, 'flags': ['money_recv']})
+							ok, message = money.transfer(db, u, '__OM_NOM_NOM', d['price']*amount)
+							if ok:
+								rcon.send('give ' + nick + ' ' + itemid + ' ' + str(amount))
+							self.html_redirect('/message?m=' + message)
+						else:
+							self.html_redirect('/message?m=Item%20not%20found')
+					else:
+						self.html_redirect('/message?m=Invalid%20amount')
+				else:
+					self.html_redirect('/message?m=Item%20not%20specified')
+			else:
+				self.html_redirect('/message?m=Who%20Are%20You%3F')
 
 		else:
 			self.send_error(404, 'Not Found')
@@ -257,9 +308,12 @@ def get_user_by_cookie(cookie):
 if __name__ == '__main__':
 	dbclient = pymongo.MongoClient(config['dbUri'])
 	db = dbclient.funky
+	rcfg = config['rconServer']
+	rcon = mcrcon.MCRcon(rcfg['host'], rcfg['port'], rcfg['password'])
 	try:
 		httpd = SocketServer.TCPServer(("", PORT), FunkyHTTPRequestHandler)
 		httpd.serve_forever()
 	except KeyboardInterrupt:
 		print('Interrupted.')
+		rcon.close()
 		httpd.socket.close()
