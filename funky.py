@@ -185,7 +185,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 			else:
 				self.wfile.write('<form name="register" method="post" action="account?do=register">Create an account:<br>')
-				self.wfile.write('Login: <input type="text" size="40" name="login"><br>Password: <input name="pwd" type="password" ')
+				self.wfile.write('Login: <input type="text" size="40" name="login"><br>Nickname: <input type="text" size="40" ')
+				self.wfile.write('name="nickname"><br>Password: <input name="pwd" type="password" ')
 				self.wfile.write('size="40"><br><input type="submit" value="Sign up"></form><h3>ACHTUNG! In this raw in-development version ')
 				self.wfile.write('we store your passwords in plain text form, so do not use your regular passwords you already ')
 				self.wfile.write('using on another web sites.</h3>')
@@ -212,7 +213,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			data, l = self.get_post_data()
 			if 'login' in data and 'pwd' in data:
 				if q['do'][0] == 'login':
-					acc = db.accounts.find_one({'login': data['login'][0], 'password': data['pwd'][0]})
+					acc = db.accounts.find_one({'login': data['login'][0], 'password': data['pwd'][0], 'locked': False})
 					if acc:
 						self.send_response(200, 'OK')
 						cookie = base64.b64encode(urandom(32))
@@ -228,7 +229,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						self.html_redirect('/register?error=1&message=Account ' + data['login'][0] + ' already exist.')
 					else:
 						db['accounts'].insert({'login': data['login'][0], 'password': data['pwd'][0], 'money': 0.0, \
-							'flags': ['money_recv', 'money_send']})
+							'locked': False, 'nickname': data['nickname'][0], 'flags': ['money_recv', 'money_send']})
 						self.html_redirect('/register?error=0')
 
 				else:
