@@ -1,0 +1,75 @@
+body
+{
+	margin-top: 5%;
+	margin-bottom: 5%;
+	margin-left: 0;
+	margin-right: 0;
+
+	background: url("back.jpg") no-repeat center center fixed; 
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
+	font-family: arial;
+	color: #e8f0ff;
+	text-align: center;
+}
+
+a:link { color: #e8d0ff; }
+
+a:visited { color: #e8d0ff; }
+
+a:hover { color: #e8d0dd; }
+
+div
+{
+	margin: 0;
+	color: rgba(24, 32, 48, 0.75);
+	padding: 4px 6px 4px 6px;
+	background: rgba(222, 228, 244, 0.5);
+	border-style: none;
+}
+
+tiny		{ font-size: 10px; }
+tiny12		{ font-size: 12px; }
+
+div:hover { background: rgba(222, 228, 244, 1); }
+
+div.box {
+	border-style: hidden; background-color: transparent;
+}
+
+div.code_list
+{
+	background: #000000;
+	border-color: #555555;
+	color: #888;
+	margin: 4px 6px 4px 6px;
+	font-family: courier;
+	font-size: 12px;
+	text-align: left;
+}
+
+H2 { font-weight: normal; font-size: 20px;
+	margin: 8px 8px 8px 8px;
+}
+
+H3
+{
+	text-align: left;
+	margin: 8px 8px 8px 8px;
+	font-weight: normal;
+}
+
+hr {
+	border-style: hidden;
+	border-width: 1px;
+	border-top-style: solid;
+	border-color: #ffffff;
+	opacity: 0.5;
+}
+
+img.tile
+{
+	margin: 4px 4px 4px 4px;
+}
