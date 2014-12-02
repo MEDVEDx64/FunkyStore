@@ -45,8 +45,12 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write('<html><head><meta http-equiv="refresh" content="1;url=' + url +'"><script type="text/javascript">')
 		self.wfile.write('window.location.href = "' + url +'"</script></head></html>\n')
 
-	def html_main_menu(self):
-		self.wfile.write('<a href="/">Home</a> <a href="/money">Transfer</a> <a href="/money?action=list">History</a><hr>\n')
+	def html_main_menu(self, user = '__WHO__'):
+		self.wfile.write('<a href="/">Home</a> <a href="/money">Transfer</a> <a href="/money?action=list">History</a> ' \
+			+ '<a href="/settings">Settings</a>')
+		if user_is_admin(user):
+			self.wfile.write(' <a style="color: #fba" href="/admin">Admin</a>')
+		self.wfile.write('<hr>\n')
 
 	def html_generic(self, username = None):
 		u = username
@@ -58,9 +62,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.wfile.write('<i>Welcome, Stranger!</i>\n')
 			return
 
-		self.wfile.write('<b>Account</b>: ' + u +', <b>Balance:</b> ' + str(money.get_balance(db, u)) + '\n')
+		self.wfile.write('<b>Account</b>: ' + u +', <b>Balance:</b> ' + str(money.get_balance(db, u)) + 'f\n')
 		self.wfile.write(' (<a href="/logout">Logout</a>)<hr>\n')
-		self.html_main_menu()
+		self.html_main_menu(u)
 
 	def do_GET(self):
 		if not self.headers['host'] == HOST:
@@ -97,11 +101,38 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			username = get_user_by_cookie(cookie)
 			self.html_generic(username)
 			if username:
-				for i in db['items'].find({'in_stock': True}):
+				is_admin = user_is_admin(username)
+				query = {'in_stock': True}
+				if is_admin:
+					query = {}
+				for i in db['items'].find(query):
 					self.html_block_start()
 					self.wfile.write('<form name="buy" style="margin: 0" method="post" action="buy?itemid=' + str(i['item_id']) + '">')
 					self.wfile.write(i['text'] + ' &ndash; <b>' + str(i['price']) + 'f</b> &ndash; <input type="text" size="4"')
 					self.wfile.write('name="amount" value="1"> <input type="submit" value="Buy"></form>\n')
+					if is_admin:
+						in_stock = ''
+						if i['in_stock']:
+							in_stock = 'checked="checked"'
+						self.wfile.write('<form name="item-update" style="margin: 4px" method="post" ' \
+							+ 'action="item?do=update&itemid=' + i['item_id'] + '">' \
+							+ 'text <input type="text" size="32" name="text">' \
+							+ ' price <input type="text" size="4" name="price" value="' + str(i['price']) + '">' \
+							+ ' in stock <input type="checkbox" name="in_stock" ' + in_stock + '>' \
+							+ ' <input type="submit" value="Update"></form><x style="color: #335">[' + i['item_id'] + ']</x>' \
+							+ ' <a href="/item?do=delete&itemid=' + i['item_id'] \
+							+ '" style="color: #e44" method="post">Delete</a>\n')
+					self.html_block_end()
+
+				if is_admin:
+					self.html_block_start()
+					self.wfile.write('<form name="item-insert" style="margin: 0" method="post" ' \
+						+ 'action="item?do=insert">' \
+						+ 'item_id[ data] <input type="text" size="24" name="itemid">' \
+						+ ' text <input type="text" size="32" name="text">' \
+						+ ' price <input type="text" size="4" name="price">' \
+						+ ' in stock <input type="checkbox" name="in_stock" checked="true">' \
+						+ ' <input type="submit" value="Add"></form>\n')
 					self.html_block_end()
 
 			else:
@@ -146,7 +177,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			q = urlparse.parse_qs(url.query)
 			if 'action' in q:
 				if q['action'][0] == 'list':
-					PAGESIZE = 50
+					PAGESIZE = 250
 					self.html_block_start()
 					self.wfile.write('Transactions:<div class="code_list">\n')
 					page = 0
@@ -156,8 +187,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						.skip(page*PAGESIZE).limit(PAGESIZE)
 
 					for d in c:
-						self.wfile.write('<b>From</b> ' + d['source'] + ' <b>to</b> ' + d['destination'] + ' <b>transfered</b> ')
-						self.wfile.write(str(d['amount']) + ' Funks at ' + str(d['timestamp']) + '<br>\n')
+						self.wfile.write('<b>' + str(d['amount']) + 'f</b> from <b>' + d['source'] + '</b> to <b>')
+						self.wfile.write(d['destination'] + '</b> at <i>' + str(d['timestamp']) + '</i><br>\n')
 					self.wfile.write('</div>\n')
 
 				self.html_block_end()
@@ -203,10 +234,22 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			else:
 				self.wfile.write('Huh?\n')
 
+		elif url.path == '/item':
+			q = urlparse.parse_qs(url.query)
+			if 'do' in q and q['do'][0] == 'delete':
+				if 'itemid' in q:
+					db['items'].remove({'item_id': q['itemid'][0]})
+					self.html_redirect('/')
+				else:
+					self.html_redirect('/message?m=No item ID specified')
+			else:
+				self.send_error(400, 'Bad Request')
+
 		else:
 			self.send_error(404, 'Not Found')
 
 	def do_POST(self):
+		missing_data_url = '/message?m=Missing some required fields, make sure you filled the form correctly.'
 		url = urlparse.urlparse(self.path)
 		q = urlparse.parse_qs(url.query)
 		if url.path == '/account':
@@ -224,6 +267,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					else:
 						self.html_bad_login()
 				elif q['do'][0] == 'register':
+					if not 'nickname' in data or data['login'][0][0:2] == '__':
+						self.html_redirect(missing_data_url)
+						return
 					acc = db.accounts.find_one({'login': data['login'][0]})
 					if acc:
 						self.html_redirect('/register?error=1&message=Account ' + data['login'][0] + ' already exist.')
@@ -235,16 +281,23 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				else:
 					self.send_error(400, 'Bad Request')
 			else:
-				self.html_bad_login()
+				if q['do'][0] == 'login':
+					self.html_bad_login()
+				else:
+					self.html_redirect(missing_data_url)
 
 		elif url.path == '/transfer':
 			self.send_response(200, 'OK')
 			self.end_headers()
 			if not 'cookie' in self.headers:
-				self.wfile.write('Not logged in.\n')
+				self.html_redirect('/message?m=Not logged in.\n')
 				return
 
 			data, l = self.get_post_data()
+			if not 'destination' in data or not 'amount' in data:
+				self.html_redirect(missing_data_url)
+				return
+
 			ok, msg = money.transfer(db, get_user_by_cookie(self.headers['cookie']), data['destination'][0], float(data['amount'][0]))
 			self.html_redirect('/message?m=' + msg)
 
@@ -267,23 +320,70 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						amount = int(data['amount'][0])
 
 					if amount > 0 and amount < 65:
+						print(itemid)
 						d = db['items'].find_one({'item_id': itemid}, {'price': 1})
 						if d:
-							if not db['accounts'].find_one({'login': '__OM_NOM_NOM'}):
-								db['accounts'].insert({'login': '__OM_NOM_NOM', 'money': 0.0, 'password': '0', \
-									'locked': True, 'flags': ['money_recv']})
-							ok, message = money.transfer(db, u, '__OM_NOM_NOM', d['price']*amount)
+							bank_user = '__BANK__'
+							if not db['accounts'].find_one({'login': bank_user}):
+								db['accounts'].insert({'login': bank_user, 'money': 0.0, 'password': '0', \
+									'locked': True, 'flags': ['money_recv', 'system']})
+							ok, message = money.transfer(db, u, bank_user, d['price']*amount)
 							if ok:
-								rcon.send('give ' + nick + ' ' + itemid + ' ' + str(amount))
+								item = itemid
+								data = '0'
+								if ' ' in itemid:
+									s = itemid.strip().split(' ')
+									item = s[0]
+									data = s[1]
+									print(item + '\n')
+									print(data + '\n')
+								rcon.send('give ' + nick + ' ' + item + ' ' + str(amount) + ' ' + data)
 							self.html_redirect('/message?m=' + message)
 						else:
-							self.html_redirect('/message?m=Item%20not%20found')
+							self.html_redirect('/message?m=No%20such%20item')
 					else:
 						self.html_redirect('/message?m=Invalid%20amount')
 				else:
 					self.html_redirect('/message?m=Item%20not%20specified')
 			else:
 				self.html_redirect('/message?m=Who%20Are%20You%3F')
+
+		elif url.path == '/item':
+			u = None
+			if 'cookie' in self.headers:
+				u = get_user_by_cookie(self.headers['cookie'])
+			if not u or not user_is_admin(u):
+				self.send_error(404, 'Not Found')
+				return
+
+			data, l = self.get_post_data()
+			if 'do' in q:
+				in_stock = False
+				if 'in_stock' in data and data['in_stock'][0] == 'on':
+					in_stock = True
+
+				if q['do'][0] == 'insert':
+					try:
+						db['items'].insert({'item_id': data['itemid'][0], 'text': data['text'][0], 'price': float(data['price'][0]), \
+							'in_stock': in_stock})
+						self.html_redirect('/')
+					except KeyError:
+						self.html_redirect(missing_data_url)
+
+				elif q['do'][0] == 'update':
+					set_query = {'in_stock': in_stock}
+					if 'text' in data:
+						set_query['text'] = data['text'][0]
+					if 'text' in data:
+						set_query['price'] = float(data['price'][0])
+					if 'itemid' in q:
+						db['items'].update({'item_id': q['itemid'][0]}, {'$set': set_query})
+						self.html_redirect('/')
+					else:
+						self.html_redirect('/message?m=No item ID specified')
+
+				else:
+					self.send_error(400, 'Bad Request')
 
 		else:
 			self.send_error(404, 'Not Found')
@@ -305,6 +405,14 @@ def get_user_by_cookie(cookie):
 			return d['login']
 
 	return None
+
+def user_is_admin(username):
+	try:
+		if 'admin' in (db['accounts'].find_one({'login': username}, {'flags': 1}))['flags']:
+			return True
+	except KeyError:
+		pass
+	return False
 
 if __name__ == '__main__':
 	dbclient = pymongo.MongoClient(config['dbUri'])
