@@ -6,8 +6,10 @@ import urlparse
 from os import urandom
 import base64
 from datetime import datetime
+import threading
 import cookielib
 import money
+from time import sleep
 import os
 
 import mcrcon
@@ -17,7 +19,6 @@ HOST = config['host']
 #if not PORT == 80:
 #	HOST += ':' + str(PORT)
 db = None
-rcon = None
 
 class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_start(self):
@@ -319,7 +320,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					if 'amount' in data:
 						amount = int(data['amount'][0])
 
-					if amount > 0 and amount < 65:
+					if amount > 0 and amount < 64: # WARNING: high values may knock MC server out (minecraft bug?)
 						d = db['items'].find_one({'item_id': itemid}, {'price': 1})
 						if d:
 							bank_user = '__BANK__'
@@ -334,7 +335,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									s = itemid.strip().split(' ')
 									item = s[0]
 									data = s[1]
-								rcon.send('give ' + nick + ' ' + item + ' ' + str(amount) + ' ' + data)
+								ItemSender(nick, item, amount, data).start()
 							self.html_redirect('/message?m=' + message)
 						else:
 							self.html_redirect('/message?m=No%20such%20item')
@@ -411,15 +412,48 @@ def user_is_admin(username):
 		pass
 	return False
 
+def get_rcon():
+	return mcrcon.MCRcon(rcfg['host'], rcfg['port'], rcfg['password'])
+
+class DetachedRconExecutor(threading.Thread):
+	def __init__(self):
+		super(DetachedRconExecutor, self).__init__()
+		self.rcon = get_rcon()
+
+	def execute(self):
+		pass
+
+	def run(self):
+		try:
+			self.execute()
+		finally:
+			self.rcon.close()
+
+class ItemSender(DetachedRconExecutor):
+	def __init__(self, nick, item_id, amount = 1, data = 0):
+		super(ItemSender, self).__init__()
+		self.nick = nick
+		self.item_id = item_id
+		self.amount = amount
+		self.data = data
+
+	def execute(self):
+		amount_left = self.amount
+		while amount_left > 0:
+			c = 64
+			if amount_left < 64:
+				c = amount_left
+			amount_left -= c
+			self.rcon.send('give ' + self.nick + ' ' + self.item_id + ' ' + str(c) + ' ' + self.data)
+			sleep(0.25)
+
 if __name__ == '__main__':
 	dbclient = pymongo.MongoClient(config['dbUri'])
 	db = dbclient.funky
 	rcfg = config['rconServer']
-	rcon = mcrcon.MCRcon(rcfg['host'], rcfg['port'], rcfg['password'])
 	try:
 		httpd = SocketServer.TCPServer(("", PORT), FunkyHTTPRequestHandler)
 		httpd.serve_forever()
 	except KeyboardInterrupt:
 		print('Interrupted.')
-		rcon.close()
 		httpd.socket.close()
