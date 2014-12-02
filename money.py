@@ -2,6 +2,9 @@ from datetime import datetime
 
 def transfer(db, login_src, login_dest, amount = 0.0):
 	"Transfer some $$$ from account to account, return True on success, False on failure (not enough money, etc.)"
+	if amount < 0:
+		return (False, 'Invalid amount')
+
 	acc = db['accounts'].find_one({'login': login_src})
 	if not acc:
 		return (False, 'Source account does not exist')
