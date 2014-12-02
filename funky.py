@@ -320,7 +320,6 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						amount = int(data['amount'][0])
 
 					if amount > 0 and amount < 65:
-						print(itemid)
 						d = db['items'].find_one({'item_id': itemid}, {'price': 1})
 						if d:
 							bank_user = '__BANK__'
@@ -335,8 +334,6 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									s = itemid.strip().split(' ')
 									item = s[0]
 									data = s[1]
-									print(item + '\n')
-									print(data + '\n')
 								rcon.send('give ' + nick + ' ' + item + ' ' + str(amount) + ' ' + data)
 							self.html_redirect('/message?m=' + message)
 						else:
@@ -367,7 +364,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						db['items'].insert({'item_id': data['itemid'][0], 'text': data['text'][0], 'price': float(data['price'][0]), \
 							'in_stock': in_stock})
 						self.html_redirect('/')
-					except KeyError:
+					except (KeyError, TypeError):
 						self.html_redirect(missing_data_url)
 
 				elif q['do'][0] == 'update':
