@@ -54,6 +54,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write('<hr>\n')
 
 	def html_generic(self, username = None):
+		self.wfile.write('<img style="margin: 8px" src="storage/funky.png"></img><br>\n')
+
 		u = username
 		if not u:
 			if 'cookie' in self.headers:
@@ -245,6 +247,22 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					self.html_redirect('/message?m=No item ID specified')
 			else:
 				self.send_error(400, 'Bad Request')
+
+		elif url.path == '/settings':
+			cookie = None
+			if 'cookie' in self.headers:
+				cookie = self.headers['cookie']
+			username = get_user_by_cookie(cookie)
+			if not username:
+				self.send_error(404, 'Not Found')
+				return
+
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+			self.html_generic()
+			self.wfile.write('Nothing yet!\n')
+			self.html_end()
 
 		else:
 			self.send_error(404, 'Not Found')
