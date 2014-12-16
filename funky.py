@@ -270,7 +270,14 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.end_headers()
 			self.html_start()
 			self.html_generic()
-			self.wfile.write('Nothing yet!\n')
+
+			nick = db['accounts'].find_one({'login': username}, {'nickname': 1})
+			if not nick:
+				nick = 'Steve?'
+			self.wfile.write('<form name="settings" method="post" action="settings">')
+			self.wfile.write('Nickname: <input type="text" size="32" value="' + nick['nickname'] + '" name="nickname"><br>')
+			self.wfile.write('<input type="submit" value="Submit"></form>\n')
+
 			self.html_end()
 
 		elif url.path == '/admin':
@@ -489,6 +496,17 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				else:
 					self.send_error(400, 'Bad Request')
 
+		elif url.path == '/settings':
+			username = self.get_user_by_cookie()
+			if not username:
+				self.send_error(404, 'Not Found')
+				return
+
+			data, l = self.get_post_data()
+			if 'nickname' in data:
+				db['accounts'].update({'login': username}, {'$set': {'nickname': data['nickname'][0]}})
+				self.html_redirect('/message?m=Success')
+
 		elif url.path == '/admin':
 			username = self.get_user_by_cookie()
 			if not user_is_admin(username):
@@ -496,7 +514,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				return
 
 			data, l = self.get_post_data()
-			if 'do' in q and q['do'][0] == 'account_editor_redirect':
+			if 'do' in url.query and q['do'][0] == 'account_editor_redirect':
 				if 'login' in data:
 					self.html_redirect('/admin?go=accounts&login=' + data['login'][0])
 				else:
