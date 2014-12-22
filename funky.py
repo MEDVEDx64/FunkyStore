@@ -114,11 +114,13 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					query = {}
 				for i in db['items'].find(query):
 					self.html_block_start()
+					# modified buy form
 					self.wfile.write('<form name="buy" style="margin: 0" method="post" action="buy?itemid=' + str(
 						i['item_id']) + '">')
-					self.wfile.write(
-						i['text'] + ' &ndash; <b>' + str(i['price']) + 'f</b> &ndash; <input type="text" size="4"')
-					self.wfile.write('name="amount" value="1"> <input type="submit" value="Buy"></form>\n')
+					self.wfile.write('<div class="inner inner-item-name"> + 
+						i['text'] + ' &ndash; <b>' + str(i['price']) + 'f</b></div>')
+					self.wfile.write('<div class="inner inner-inputs"><input type="text" size="4"'+
+						+ 'name="amount" value="1"> <input type="submit" value="Buy"></div></form>\n')
 					if is_admin:
 						in_stock = ''
 						if i['in_stock']:

@@ -28,6 +28,7 @@ div
 	padding: 4px 6px 4px 6px;
 	background: rgba(222, 228, 244, 0.5);
 	border-style: none;
+	/* border-radius: 10px; */
 }
 
 tiny		{ font-size: 10px; }
@@ -74,6 +75,63 @@ img.tile
 	margin: 4px 4px 4px 4px;
 }
 
-form {
-	margin: 4px
+
+.inner-inputs {
+    display: inline-block;
+    text-align: right;
+}
+
+.inner-item-name {
+    display: inline-block;
+    background: none;
+}
+
+div.inner:hover {
+    background: none;
+}
+
+
+div:hover > div.inner-item-name {
+    color: red;
+}
+
+div:hover form .inner-item-name {
+    color: rgb(213, 56, 56);
+}
+
+div:not(hover) form .inner-inputs {
+    display: none;
+}
+
+div:hover form .inner-inputs {
+    display: inline-block;
+}
+
+input[type=submit] {
+    border-radius: 4px;
+}
+
+.inner-inputs {
+    margin: 0;
+    padding: 0;
+}
+
+center div {
+    margin-bottom: 2p;
+}
+
+div form {
+	display: inline-block;
+	min-height: 20px;
+	padding: 1 6px;
+	margin-top: 2px;
+	background: rgba(176, 189, 224, 0.82);
+	text-align: left;
+	margin-left: 100px;
+	border-radius: 10px;
+	box-shadow: rgba(65, 82, 136, 0.54) 2px 2px;
+}
+
+#chart {
+	color: "black";
 }
