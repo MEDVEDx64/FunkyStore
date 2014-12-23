@@ -117,9 +117,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					# modified buy form
 					self.wfile.write('<form name="buy" style="margin: 0" method="post" action="buy?itemid=' + str(
 						i['item_id']) + '">')
-					self.wfile.write('<div class="inner inner-item-name"> + 
+					self.wfile.write('<div class="inner inner-item-name">' +
 						i['text'] + ' &ndash; <b>' + str(i['price']) + 'f</b></div>')
-					self.wfile.write('<div class="inner inner-inputs"><input type="text" size="4"'+
+					self.wfile.write('<div class="inner inner-inputs"><input type="text" size="4"'
 						+ 'name="amount" value="1"> <input type="submit" value="Buy"></div></form>\n')
 					if is_admin:
 						in_stock = ''
