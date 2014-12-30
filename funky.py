@@ -7,9 +7,11 @@ from os import urandom
 import base64
 from datetime import datetime
 import threading
-import cookielib
 import money
 from time import sleep
+import subprocess
+import binascii
+import cgi
 import os
 
 import mcrcon
@@ -19,7 +21,6 @@ HOST = config['host']
 # if not PORT == 80:
 # HOST += ':' + str(PORT)
 db = None
-
 
 class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_start(self):
@@ -51,7 +52,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write('window.location.href = "' + url + '"</script></head></html>\n')
 
 	def html_main_menu(self, user='__WHO__'):
-		self.wfile.write('<a href="/">Home</a> <a href="/money">Transfer</a> <a href="/money?action=list">History</a> ' \
+		self.wfile.write('<a href="/">Home</a> <a href="/print">Print</a> '
+						 + '<a href="/money">Transfer</a> <a href="/money?action=list">History</a> '
 						 + '<a href="/settings">Settings</a>')
 		if user_is_admin(user):
 			self.wfile.write(' <a style="color: #fba" href="/admin">Admin</a>')
@@ -212,6 +214,30 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('Target account: <input type="text" size="60" name="destination">')
 				self.wfile.write('<br>Amount: <input name="amount" type="text" size="20"><br>')
 				self.wfile.write('<input type="submit" value="Transfer"></form>\n')
+
+		elif url.path == '/print':
+			username = self.get_user_by_cookie()
+			if not username:
+				self.send_error(404, 'Not Found')
+				return
+
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+			self.html_generic()
+
+			u = db['accounts'].find_one({'login': username})
+			if not 'print' in u['flags']:
+				self.wfile.write('You have no permissions to print schematics.\n')
+				self.html_end()
+				return
+
+			self.wfile.write('Schematic printer<form action="print" method="post" enctype="multipart/form-data">'
+				+ 'X: <input name="x" type="text" size="6"><br>'
+				+ 'Y: <input name="y" type="text" size="6"><br>'
+				+ 'Z: <input name="z" type="text" size="6"><br>'
+				+ 'Schematic file: <input type="file" name="schematic" id="schematic"> '
+				+ '<input type="submit" value="Upload"></form>\n')
 
 		elif url.path == '/register':
 			self.send_response(200, 'OK')
@@ -498,6 +524,40 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				else:
 					self.send_error(400, 'Bad Request')
 
+		elif url.path == '/print':
+			try:
+				username = self.get_user_by_cookie()
+				if username:
+					u = db.accounts.find_one({'login': username})
+				if not username or not 'print' in u['flags']:
+					self.send_error(404, 'Not Found')
+					return
+
+				if not 'content-type' in self.headers or not 'multipart/form-data' in self.headers['content-type']:
+					self.send_error(400, 'Bad Request')
+					return
+
+				boundary = self.headers['content-type'].split('=')[1].strip()
+				upload = cgi.parse_multipart(self.rfile, {'boundary': boundary})
+				if not os.path.exists('tmp'):
+					os.mkdir('tmp')
+				fn = 'tmp/' + get_some_random_string()
+				schematic = open(fn, 'wb')
+				schematic.write(upload['schematic'][0])
+				schematic.close()
+
+				rcfg = config['rconServer']
+				subprocess.Popen(['./mcpaste.py', rcfg['host'] + ':' + str(rcfg['port']), rcfg['password'], fn,
+					str(int(upload['x'][0])), str(int(upload['y'][0])), str(int(upload['z'][0]))])
+
+			except:
+				self.send_error(500, 'Internal Server Error')
+				raise
+
+			self.send_response(200, 'OK.')
+			self.end_headers()
+			self.html_redirect('/message?m=Print task successfully submitted')
+
 		elif url.path == '/settings':
 			username = self.get_user_by_cookie()
 			if not username:
@@ -572,6 +632,8 @@ def user_is_admin(username):
 		pass
 	return False
 
+def get_some_random_string():
+	return binascii.hexlify(os.urandom(16))
 
 def get_rcon():
 	return mcrcon.MCRcon(rcfg['host'], rcfg['port'], rcfg['password'])
