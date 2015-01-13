@@ -109,6 +109,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 			username = get_user_by_cookie(cookie)
 			self.html_generic(username)
+			q = urlparse.parse_qs(url.query)
+			if 'm' in q:
+				self.wfile.write('<div style="background-color: #e82"><b>' + q['m'][0] + '</b></div><hr>\n')
 			if username:
 				is_admin = user_is_admin(username)
 				query = {'in_stock': True}
@@ -476,7 +479,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 								ItemSender(nick, item, amount, data).start()
 								db['sold'].insert({'who': nick, 'what': itemid, 'when': datetime.now(),
 												   'amount': amount, 'price': d['price']})
-							self.html_redirect('/message?m=' + message)
+							self.html_redirect('/?m=' + message)
 						else:
 							self.html_redirect('/message?m=No%20such%20item')
 					else:
