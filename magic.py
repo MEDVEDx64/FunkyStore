@@ -78,6 +78,9 @@ def parse_code(code):
 	if not code or len(code) < 2:
 		return {'status': SCKV['SC_GENERIC_PARSE_ERROR']}
 	code_cooked = code.strip().lower()
+	if code_cooked[0] == '~':
+		code_cooked = code_cooked[1:]
+		out['dry_run'] = True
 	for c in code_cooked:
 		if not c.isalpha() and not c.isdigit() and not c == '-':
 			return {'status': SCKV['SC_ILLEGAL_CHARACTERS']}
@@ -90,6 +93,8 @@ def parse_code(code):
 	out['head'] = blocks[0]
 	if len(blocks[0]) == 2: # MagicFSC1 format
 		
+		if len(blocks) < 3:
+			return {'status': SCKV['SC_NOT_ENOUGH_BLOCKS']}
 		if len(blocks) > 3:
 			return {'status': SCKV['SC_ILLEGAL_EXTRA_BLOCK']}
 		out['version'] = 1
@@ -118,52 +123,62 @@ def process(code, db, login):
 		if out['status']:
 			return out
 
-		dry_run = not 'data' in out # lol
+		dry_run = False
+		if 'dry_run' in out:
+			dry_run = out['dry_run']
+		else:
+			out['dry_run'] = dry_run
 		if out['head'][1] == '0':
 			dry_run = True
-		query_keys = ['head', 'ident']
-		if dry_run:
-			out['dry_run'] = True
-		else:
-			out['dry_run'] = False
-			query_keys.append('data')
+		query_keys = ['head', 'ident', 'data']
 		entry = db[COLLECTION_NAME].find_one({i: out[i] for i in query_keys})
 		if not entry:
 			out['status'] = SCKV['SC_NO_SUCH_CODE']
 			return out
 
-		out['left'] = entry['left']
-		if not out['left']:
+		if not entry['left']:
 			out['status'] = SCKV['SC_EXPIRED_CODE']
 			return out
-		if 'produced' in entry: out['produced'] = entry['produced']
 		if 'expiraion' in entry:
 			out['expiraion'] = entry['expiraion']
 			if datetime.now() >= out['expiraion']:
 				out['status'] = SCKV['SC_EXPIRED_CODE']
 				return out
-		if 'comment' in entry: out['comment'] = entry['comment']
-		if 'value' in entry: out['value'] = entry['value']
 		if 'revoked' in entry and entry['revoked']:
 			out['revoked'] = True
+			out['status'] = SCKV['SC_REVOKED_CODE']
+			return out
+		out['left'] = entry['left']
+		if 'produced' in entry: out['produced'] = entry['produced']
+		if 'comment' in entry: out['comment'] = entry['comment']
+		if 'value' in entry: out['value'] = entry['value']
 
-		if out['head'].startswith(H_VOUCHER):
-			ident = out['ident'][0:3]
+		def code_type(head, tags):
+			for t in tags:
+				if head.startswith(t): return True
+			return False
+
+		if code_type(out['head'], H_VOUCHER + H_VOUCHER_REUSABLE):
+			out['description'] = 'Voucher'
+			ident = str(out['ident'])[0:3]
 			if ident in I_MONEY:
+				out['description'] += ' (Money)'
 				if not 'value' in out or not isinstance(out['value'], float):
 					out['status'] = SCKV['SC_DEFECTIVE_CODE']
 					return out
-				ok, msg = money.transfer(db, BANK_ACCOUNT, login, out['value'])
-				if not ok:
-					out['status'] = SCKV['SC_MONEY_TRANSFER_FAILED']
-					out['message'] = msg
-					return out
+				if not dry_run:
+					ok, msg = money.transfer(db, BANK_ACCOUNT, login, out['value'])
+					if not ok:
+						out['status'] = SCKV['SC_MONEY_TRANSFER_FAILED']
+						out['message'] = msg
+						return out
 
 			else:
 				out['status'] = SCKV['SC_UNSUPPORTED_REQUEST']
 				return out
 
-			decrement_left_value(db, out)
+			if not dry_run:
+				decrement_left_value(db, out)
 
 		else:
 			out['status'] = SCKV['SC_UNSUPPORTED_REQUEST']
@@ -172,6 +187,11 @@ def process(code, db, login):
 		return out
 
 	out = _proc(code, db, login)
+	kill_list = ['head', 'ident', 'data']
+	if out['status']:
+		kill_list += ['origin']
+	for k in kill_list:
+		if k in out: del(out[k])
 	out['status'] = str(out['status']) + ' (' + SCVK[out['status']] + ')'
 	if 'left' in out and out['left'] < 0:
 		out['left'] = 'Infinity'

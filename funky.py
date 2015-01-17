@@ -3,11 +3,13 @@ import SocketServer
 import pymongo
 from config import config
 import urlparse
+import urllib
 from os import urandom
 import base64
 from datetime import datetime
 import threading
 import money
+import magic
 from time import sleep
 import subprocess
 import binascii
@@ -53,8 +55,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 	def html_main_menu(self, user='__WHO__'):
 		self.wfile.write('<a href="/">Home</a> <a href="/print">Print</a> '
-						 + '<a href="/money">Transfer</a> <a href="/money?action=list">History</a> '
-						 + '<a href="/settings">Settings</a>')
+						 + '<a href="/money">Transfer</a> <a href="/magic">Redeem a code</a> '
+						 + '<a href="/money?action=list">History</a> <a href="/settings">Settings</a>')
 		if user_is_admin(user):
 			self.wfile.write(' <a style="color: #fba" href="/admin">Admin</a>')
 		self.wfile.write('<hr>\n')
@@ -290,6 +292,40 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					self.html_redirect('/message?m=No item ID specified')
 			else:
 				self.send_error(400, 'Bad Request')
+
+		elif url.path == '/magic':
+			username = self.get_user_by_cookie()
+			if not username:
+				self.send_error(404, 'Not Found')
+				return
+
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+			self.html_generic()
+
+			self.wfile.write('Input code:<br>'
+				+ '<form method="post" name="magic" action="magic">'
+				+ '<input type="text" name="code" size="40"><input type="submit" value="Submit"></form>'
+				+ '<i style="font-size: 8pt">MagicFSC1 code format is accepted (xx-111111-1234567890)<br>'
+				+ 'Append "~" to beginning of a code to verify it.</i>\n')
+
+			q = urlparse.parse_qs(url.query)
+			if len(q) > 0:
+				self.wfile.write('<hr><div>\n')
+				s = q['status'][0].split(' ')[0]
+				if 'status' in q and (s.isdigit() or s[0] == '-'):
+					s = int(s)
+					self.wfile.write('<img style="width: 48px; margin: 8px" src="storage/')
+					if s:
+						self.wfile.write('fail')
+					else:
+						self.wfile.write('okay')
+					self.wfile.write('.png"><br>\n')
+				self.wfile.write('<div class="code_list" style="text-align: center">')
+				for e in q:
+					self.wfile.write('<b style="color: #ccd">' + e + ':</b> ' + q[e][0] + '<br>\n')
+				self.wfile.write('</div></div>\n')
 
 		elif url.path == '/settings':
 			username = self.get_user_by_cookie()
@@ -571,6 +607,18 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			if 'nickname' in data:
 				db['accounts'].update({'login': username}, {'$set': {'nickname': data['nickname'][0]}})
 				self.html_redirect('/message?m=Success')
+
+		elif url.path == '/magic':
+			u = None
+			if 'cookie' in self.headers:
+				u = get_user_by_cookie(self.headers['cookie'])
+			if not u:
+				self.html_redirect('/message?m=Who Are You?')
+				return
+			data, l = self.get_post_data()
+			if not 'code' in data:
+				self.html_redirect('/magic?status=Empty code')
+			self.html_redirect('/magic?' + urllib.urlencode(magic.process(data['code'][0], db, u)))
 
 		elif url.path == '/admin':
 			username = self.get_user_by_cookie()
