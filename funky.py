@@ -220,6 +220,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('<br>Amount: <input name="amount" type="text" size="20"><br>')
 				self.wfile.write('<input type="submit" value="Transfer"></form>\n')
 
+			self.html_end()
+
 		elif url.path == '/print':
 			username = self.get_user_by_cookie()
 			if not username:
@@ -243,6 +245,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				+ 'Z: <input name="z" type="text" size="6"><br>'
 				+ 'Schematic file: <input type="file" name="schematic" id="schematic"> '
 				+ '<input type="submit" value="Upload"></form>\n')
+
+			self.html_end()
 
 		elif url.path == '/register':
 			self.send_response(200, 'OK')
@@ -281,6 +285,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.html_redirect('/')
 			else:
 				self.wfile.write('Huh?\n')
+			self.html_end()
 
 		elif url.path == '/item':
 			q = urlparse.parse_qs(url.query)
@@ -292,6 +297,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					self.html_redirect('/message?m=No item ID specified')
 			else:
 				self.send_error(400, 'Bad Request')
+			self.html_end()
 
 		elif url.path == '/magic':
 			username = self.get_user_by_cookie()
@@ -326,6 +332,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				for e in q:
 					self.wfile.write('<b style="color: #ccd">' + e + ':</b> ' + q[e][0] + '<br>\n')
 				self.wfile.write('</div></div>\n')
+			self.html_end()
 
 		elif url.path == '/settings':
 			username = self.get_user_by_cookie()
