@@ -52,6 +52,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write(
 			'<html><head><meta http-equiv="refresh" content="1;url=' + url + '"><script type="text/javascript">')
 		self.wfile.write('window.location.href = "' + url + '"</script></head></html>\n')
+		self.html_end()
 
 	def html_main_menu(self, user='__WHO__'):
 		self.wfile.write('<a href="/">Home</a> <a href="/print">Print</a> '
@@ -225,7 +226,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		elif url.path == '/print':
 			username = self.get_user_by_cookie()
 			if not username:
-				self.send_error(404, 'Not Found')
+				self.html_redirect('/')
 				return
 
 			self.send_response(200, 'OK')
@@ -302,7 +303,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		elif url.path == '/magic':
 			username = self.get_user_by_cookie()
 			if not username:
-				self.send_error(404, 'Not Found')
+				self.html_redirect('/')
 				return
 
 			self.send_response(200, 'OK')
