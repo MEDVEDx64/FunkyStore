@@ -130,6 +130,7 @@ def process(code, db, login):
 			out['dry_run'] = dry_run
 		if out['head'][1] == '0':
 			dry_run = True
+			out['dry_run'] = dry_run
 		query_keys = ['head', 'ident', 'data']
 		entry = db[COLLECTION_NAME].find_one({i: out[i] for i in query_keys})
 		if not entry:
@@ -237,6 +238,8 @@ def track_origin(n):
 			return 'Mined'
 		elif n in [777, 768]:
 			return 'From another universe'
+		elif n == 666:
+			return 'hello from AlexX'
 		elif n in range(890, 990):
 			return 'Unknown'
 		elif n in range(990, 1000):
