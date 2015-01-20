@@ -26,7 +26,7 @@ Example: z0f-100000-899999-1234567890-1234567890
 """
 
 COLLECTION_NAME = 'codes'
-BANK_ACCOUNT = '__RESERVE'
+BANK_ACCOUNT = '__RESERVE__'
 
 # Iterate and compare using 'starts with'
 
