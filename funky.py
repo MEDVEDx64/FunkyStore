@@ -624,9 +624,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.html_redirect('/message?m=Who Are You?')
 				return
 			data, l = self.get_post_data()
-			if not 'code' in data:
+			if 'code' in data:
+				self.html_redirect('/magic?' + urllib.urlencode(magic.process(data['code'][0], db, u)))
+			else:
 				self.html_redirect('/magic?status=Empty code')
-			self.html_redirect('/magic?' + urllib.urlencode(magic.process(data['code'][0], db, u)))
 
 		elif url.path == '/admin':
 			username = self.get_user_by_cookie()
