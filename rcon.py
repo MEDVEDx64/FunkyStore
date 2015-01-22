@@ -28,6 +28,13 @@ class AnyCommandExecutor(DetachedRconExecutor):
 	def execute(self):
 		self.rcon.send(self.cmd)
 
+class Teleporter(AnyCommandExecutor):
+	def __init__(self, nick, x, y, z):
+		super(Teleporter, self).__init__('tp ' + nick + ' ' + str(x) + ' ' + str(y) + ' ' + str(z))
+
+def teleport_to_kernel(nick):
+	Teleporter(nick, -157, 59, 15).start()
+
 class ItemSender(DetachedRconExecutor):
 	def __init__(self, nick, item_id, amount=1, data=0):
 		super(ItemSender, self).__init__()

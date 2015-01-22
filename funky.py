@@ -22,10 +22,12 @@ HOST = config['host']
 # HOST += ':' + str(PORT)
 db = None
 
+COPY = '2015 MEDVEDx64. Thanks to dmitro.'
+
 class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_start(self):
 		self.wfile.write(
-			'<html><head><title>Funky Trade</title><link rel="stylesheet" type="text/css" href="storage/style.css" /></head>')
+			'<html><head><title>Funky Store</title><link rel="stylesheet" type="text/css" href="storage/style.css" /></head>')
 		self.wfile.write('<body><center>\n')
 
 	def html_end(self):
@@ -61,7 +63,14 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write('<hr>\n')
 
 	def html_generic(self, username=None):
-		self.wfile.write('<img style="margin: 8px" src="storage/funky.png"></img><br>\n')
+		self.wfile.write('<img style="margin: 8px" src="storage/funky.png"></img><br>\n'
+			+ '<i style="font-size: 7pt">Funky Store &copy; ' + COPY + '<br>\n')
+		motd = db['motd'].find().sort('date', -1).limit(1)
+		if motd.count():
+			motd = motd.next()
+			if 'text' in motd:
+				self.wfile.write('<b>' + motd['text'] + '</b><br>\n')
+		self.wfile.write('</i>\n')
 
 		u = username
 		if not u:
@@ -73,7 +82,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			return
 
 		self.wfile.write('<b>Account</b>: ' + u + ', <b>Balance:</b> ' + str(money.get_balance(db, u)) + 'f\n')
-		self.wfile.write(' (<a href="/logout">Logout</a>)<hr>\n')
+		self.wfile.write(' (<a href="/logout">Logout</a>) | <a style="color: #ef8" '
+			+ 'href="/get-to-the-kernel"<a>Get to the Kernel!</a><hr>\n')
 		self.html_main_menu(u)
 
 	def do_GET(self):
@@ -297,6 +307,21 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			else:
 				self.send_error(400, 'Bad Request')
 			self.html_end()
+
+		elif url.path == '/get-to-the-kernel':
+			username = self.get_user_by_cookie()
+			u = get_user_account(username)
+			if not username or not u:
+				self.html_redirect('/')
+				return
+			if not 'nickname' in u:
+				self.html_redirect('/?m=Nickname not defined. Check you account settings.')
+				return
+			if not 'tp_kernel' in u['flags']:
+				self.html_redirect('/?m=Permission denied.')
+				return
+			rcon.teleport_to_kernel(u['nickname'])
+			self.html_redirect('/?m=Success')
 
 		elif url.path == '/magic':
 			username = self.get_user_by_cookie()
@@ -680,6 +705,15 @@ def get_user_by_cookie(cookie):
 			return d['login']
 
 	return None
+
+def get_user_account(username):
+	return db['accounts'].find_one({'login': username})
+
+def get_nickname(username):
+	try:
+		return db['accounts'].find_one({'login': username}, {'nickname': 1})['nickname']
+	except KeyError:
+		return None
 
 
 def user_is_admin(username):
