@@ -7,16 +7,14 @@ import urllib
 from os import urandom
 import base64
 from datetime import datetime
-import threading
 import money
 import magic
 from time import sleep
 import subprocess
 import binascii
+import rcon
 import cgi
 import os
-
-import mcrcon
 
 PORT = config['port']
 HOST = config['host']
@@ -520,7 +518,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									s = itemid.strip().split(' ')
 									item = s[0]
 									data = s[1]
-								ItemSender(nick, item, amount, data).start()
+								rcon.ItemSender(nick, item, amount, data).start()
 								db['sold'].insert({'who': nick, 'what': itemid, 'when': datetime.now(),
 												   'amount': amount, 'price': d['price']})
 							self.html_redirect('/?m=' + message)
@@ -694,44 +692,6 @@ def user_is_admin(username):
 
 def get_some_random_string():
 	return binascii.hexlify(os.urandom(16))
-
-def get_rcon():
-	return mcrcon.MCRcon(rcfg['host'], rcfg['port'], rcfg['password'])
-
-
-class DetachedRconExecutor(threading.Thread):
-	def __init__(self):
-		super(DetachedRconExecutor, self).__init__()
-		self.rcon = get_rcon()
-
-	def execute(self):
-		pass
-
-	def run(self):
-		try:
-			self.execute()
-		finally:
-			self.rcon.close()
-
-
-class ItemSender(DetachedRconExecutor):
-	def __init__(self, nick, item_id, amount=1, data=0):
-		super(ItemSender, self).__init__()
-		self.nick = nick
-		self.item_id = item_id
-		self.amount = amount
-		self.data = data
-
-	def execute(self):
-		amount_left = self.amount
-		while amount_left > 0:
-			c = 64
-			if amount_left < 64:
-				c = amount_left
-			amount_left -= c
-			self.rcon.send('give ' + self.nick + ' ' + self.item_id + ' ' + str(c) + ' ' + self.data)
-			sleep(0.25)
-
 
 if __name__ == '__main__':
 	dbclient = pymongo.MongoClient(config['dbUri'])
