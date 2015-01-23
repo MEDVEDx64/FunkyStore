@@ -62,7 +62,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.wfile.write(' <a style="color: #fba" href="/admin">Admin</a>')
 		self.wfile.write('<hr>\n')
 
-	def html_generic(self, username=None):
+	def html_generic(self, username = None, url_query = None):
 		self.wfile.write('<img style="margin: 8px" src="storage/funky.png"></img><br>\n'
 			+ '<i style="font-size: 7pt">Funky Store &copy; ' + COPY + '<br>\n')
 		motd = db['motd'].find().sort('date', -1).limit(1)
@@ -85,6 +85,11 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write(' (<a href="/logout">Logout</a>) | <a style="color: #ef8" '
 			+ 'href="/get-to-the-kernel"<a>Get to the Kernel!</a><hr>\n')
 		self.html_main_menu(u)
+
+		if url_query:
+			q = urlparse.parse_qs(url_query)
+			if 'm' in q:
+				self.wfile.write('<div style="background-color: #e82"><b>' + q['m'][0] + '</b></div><hr>\n')
 
 	def do_GET(self):
 		if not self.headers['host'] == HOST:
@@ -119,11 +124,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					cookie = self.headers['cookie']
 
 			username = get_user_by_cookie(cookie)
-			self.html_generic(username)
-			q = urlparse.parse_qs(url.query)
-			if 'm' in q:
-				self.wfile.write('<div style="background-color: #e82"><b>' + q['m'][0] + '</b></div><hr>\n')
+			self.html_generic(username, url.query)
 			if username:
+				self.wfile.write("<h5><b style=\"color: #e11\">Warning:</b> "
+					+ "your order won't be delivered, unless you're in game!</h5>")
 				is_admin = user_is_admin(username)
 				query = {'in_stock': True}
 				if is_admin:
@@ -188,7 +192,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.send_response(200, 'OK')
 			self.end_headers()
 			self.html_start()
-			self.html_generic()
+			self.html_generic(url_query = url.query)
 
 			if not 'cookie' in self.headers:
 				self.html_redirect('/')
@@ -508,7 +512,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 			ok, msg = money.transfer(db, get_user_by_cookie(self.headers['cookie']), data['destination'][0],
 									 float(data['amount'][0]))
-			self.html_redirect('/message?m=' + msg)
+			self.html_redirect('/money?m=' + msg)
 
 		elif url.path == '/buy':
 			u = None

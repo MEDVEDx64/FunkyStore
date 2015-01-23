@@ -4,6 +4,8 @@ def transfer(db, login_src, login_dest, amount = 0.0):
 	"Transfer some $$$ from account to account, return True on success, False on failure (not enough money, etc.)"
 	if amount < 0:
 		return (False, 'Invalid amount')
+	if login_src == login_dest:
+		return (False, 'Destination and source are the same account')
 
 	acc = db['accounts'].find_one({'login': login_src})
 	if not acc:
