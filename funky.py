@@ -365,7 +365,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		elif url.path == '/settings':
 			username = self.get_user_by_cookie()
 			if not username:
-				self.send_error(404, 'Not Found')
+				self.html_redirect('/')
 				return
 
 			self.send_response(200, 'OK')
@@ -445,13 +445,35 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 						self.html_block_end()
 
+				elif q['go'][0] == 'accounts_list':
+					text = ''
+					for a in db['accounts'].find({}, {'login': 1}).sort('login', 1):
+						text += '<a href="admin?go=accounts&login=' + a['login'] + '">' + a['login'] + '</a> '
+					self.wfile.write('<h2>All Accounts</h2>' + text[:-1] + '\n')
+
+				elif q['go'][0] == 'bought':
+					self.wfile.write('<h2>Who Bought What</h2><div><div class="code_list">\n')
+					for e in db['sold'].find().sort('when', -1).limit(1024):
+						self.wfile.write('<b>who:</b> ' + e['who'] + ', <b>what:</b> ' + e['what'] +
+							', <b>when:</b> ' + str(e['when']) + ', <b>amount:</b> ' + str(e['amount']) + '<br>\n')
+					self.wfile.write('</div></div>\n')
+
+				elif q['go'][0] == 'transactions':
+					self.wfile.write('<h2>Recent Transactions</h2><div><div class="code_list">\n')
+					for e in db['transactions'].find().sort('timestamp', -1).limit(1024):
+						self.wfile.write('<b>src:</b> ' + e['source'] + ', <b>dst:</b> '
+							+ e['destination'] + ', <b>timestamp:</b> ' + str(e['timestamp'])
+							+ ', <b>amount:</b> ' + str(e['amount']) + '<br>\n')
+					self.wfile.write('</div></div>\n')
+
 				else:
 					self.wfile.write('No such console (or not yet implemented).\n')
 
 			else:
-				self.wfile.write('<h2>The Admin Console</h2><a href="/admin?go=accounts">Account Editor</a><br>')
-				self.wfile.write('<a href="/admin?go=transactions">All Transactions</a><br>')
-				self.wfile.write('<a href="/admin?go=bought">Who Bought What</a>\n')
+				self.wfile.write('<h2>The Admin Cheat Console</h2><a href="/admin?go=accounts">Account Editor</a><br>')
+				self.wfile.write('<a href="/admin?go=accounts_list">Explore Accounts</a><br>')
+				self.wfile.write('<a href="/admin?go=bought">Who Bought What</a><br>')
+				self.wfile.write('<a href="/admin?go=transactions">Recent Transactions</a><br>')
 
 			self.html_end()
 
