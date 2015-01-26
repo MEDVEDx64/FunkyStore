@@ -148,7 +148,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						self.wfile.write('<form name="item-update" style="margin: 4px" method="post" ' \
 										 + 'action="item?do=update&itemid=' + i['item_id'] + '">' \
 										 + 'text <input type="text" size="32" name="text">' \
-										 + ' price <input type="text" size="4" name="price" value="' + str(
+										 + ' price <input type="text" size="6" name="price" value="' + str(
 							i['price']) + '">' \
 										 + ' in stock <input type="checkbox" name="in_stock" ' + in_stock + '>' \
 										 + ' <input type="submit" value="Update"></form><x style="color: #335">[' + i[
@@ -163,7 +163,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									 + 'action="item?do=insert">' \
 									 + 'item_id[ data] <input type="text" size="24" name="itemid">' \
 									 + ' text <input type="text" size="32" name="text">' \
-									 + ' price <input type="text" size="4" name="price">' \
+									 + ' price <input type="text" size="6" name="price">' \
 									 + ' in stock <input type="checkbox" name="in_stock" checked="true">' \
 									 + ' <input type="submit" value="Add"></form>\n')
 					self.html_block_end()
@@ -609,7 +609,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					set_query = {'in_stock': in_stock}
 					if 'text' in data:
 						set_query['text'] = data['text'][0]
-					if 'text' in data:
+					if 'price' in data:
 						set_query['price'] = float(data['price'][0])
 					if 'itemid' in q:
 						db['items'].update({'item_id': q['itemid'][0]}, {'$set': set_query})
