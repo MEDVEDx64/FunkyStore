@@ -9,7 +9,6 @@ import base64
 from datetime import datetime
 import money
 import magic
-from time import sleep
 import subprocess
 import binascii
 import rcon
@@ -554,7 +553,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					if 'amount' in data:
 						amount = int(data['amount'][0])
 
-					if amount > 0 and amount < 64:  # WARNING: high values may knock MC server out (minecraft bug?)
+					if amount > 0 and amount <= 256:  # WARNING: high values may knock MC server out (minecraft bug?)
 						d = db['items'].find_one({'item_id': itemid}, {'price': 1})
 						if d:
 							bank_user = '__BANK__'

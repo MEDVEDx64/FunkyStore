@@ -1,6 +1,7 @@
 import mcrcon
 import threading
 from config import config
+from time import sleep
 
 def get_rcon():
 	rcfg = config['rconServer']
@@ -51,4 +52,4 @@ class ItemSender(DetachedRconExecutor):
 				c = amount_left
 			amount_left -= c
 			self.rcon.send('give ' + self.nick + ' ' + self.item_id + ' ' + str(c) + ' ' + self.data)
-			sleep(0.25)
+			sleep(0.5)
