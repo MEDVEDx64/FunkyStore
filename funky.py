@@ -64,7 +64,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_generic(self, username = None, url_query = None):
 		self.wfile.write('<img style="margin: 8px" src="storage/funky.png"></img><br>\n'
 			+ '<i style="font-size: 7pt">Funky Store &copy; ' + COPY + '<br>\n')
-		motd = db['motd'].find().sort('date', -1).limit(1)
+		motd = db['motd'].find().sort('timestamp', -1).limit(1)
 		if motd.count():
 			motd = motd.next()
 			if 'text' in motd:
@@ -465,6 +465,17 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							+ ', <b>amount:</b> ' + str(e['amount']) + '<br>\n')
 					self.wfile.write('</div></div>\n')
 
+				elif q['go'][0] == 'motd':
+					text = ''
+					d = db['motd'].find().sort('timestamp', -1).limit(1)
+					if d.count():
+						d = d.next()
+						if 'text' in d:
+							text = d['text']
+					self.wfile.write('<h2>Message of the Day</h2><form method="post" action="admin?go=motd" name="motd">'
+						+ '<input name="motd_text" type="text" size="86" value="' + text + '"><br>'
+						+ '<input type="submit" value="Submit"></form>')
+
 				else:
 					self.wfile.write('No such console (or not yet implemented).\n')
 
@@ -473,6 +484,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('<a href="/admin?go=accounts_list">Explore Accounts</a><br>')
 				self.wfile.write('<a href="/admin?go=bought">Who Bought What</a><br>')
 				self.wfile.write('<a href="/admin?go=transactions">Recent Transactions</a><br>')
+				self.wfile.write('<a href="/admin?go=motd">Message of the Day</a><br>')
 
 			self.html_end()
 
@@ -689,16 +701,25 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					self.html_redirect('/admin?go=accounts&login=' + data['login'][0])
 				else:
 					self.html_redirect('/admin?go=accounts')
-			elif 'go' in q and q['go'][0] == 'accounts' and 'action' in q \
-				and q['action'][0] == 'update' and 'login' in q:
-					d = {'nickname': data['nickname'][0], 'money': float(data['money'][0]),
-						 'flags': data['flags'][0].strip().split(' '), 'locked': False}
-					if 'locked' in data and data['locked'][0] == 'on':
-						d['locked'] = True
-					if 'password' in data:
-						d['password'] = data['password'][0]
-					db['accounts'].update({'login': q['login'][0]}, {'$set': d})
-					self.html_redirect('/admin?go=accounts&login=' + q['login'][0])
+			elif 'go' in q:
+				if q['go'][0] == 'accounts' and 'action' in q \
+					and q['action'][0] == 'update' and 'login' in q:
+						d = {'nickname': data['nickname'][0], 'money': float(data['money'][0]),
+							 'flags': data['flags'][0].strip().split(' '), 'locked': False}
+						if 'locked' in data and data['locked'][0] == 'on':
+							d['locked'] = True
+						if 'password' in data:
+							d['password'] = data['password'][0]
+						db['accounts'].update({'login': q['login'][0]}, {'$set': d})
+						self.html_redirect('/admin?go=accounts&login=' + q['login'][0])
+				elif q['go'][0] == 'motd':
+					d = {'timestamp': datetime.now()}
+					if 'motd_text' in data:
+						d['text'] = data['motd_text'][0]
+					db['motd'].insert(d)
+					self.html_redirect('/admin?go=motd')
+				else:
+					self.send_error(400, 'Bad Request')
 			else:
 				self.send_error(400, 'Bad Request')
 
