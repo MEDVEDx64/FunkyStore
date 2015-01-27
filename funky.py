@@ -62,19 +62,20 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write('<hr>\n')
 
 	def html_generic(self, username = None, url_query = None):
-		self.wfile.write('<img style="margin: 8px" src="storage/funky.png"></img><br>\n'
-			+ '<i style="font-size: 7pt">Funky Store &copy; ' + COPY + '<br>\n')
-		motd = db['motd'].find().sort('timestamp', -1).limit(1)
-		if motd.count():
-			motd = motd.next()
-			if 'text' in motd:
-				self.wfile.write('<b>' + motd['text'] + '</b><br>\n')
-		self.wfile.write('</i>\n')
-
 		u = username
 		if not u:
 			if 'cookie' in self.headers:
 				u = get_user_by_cookie(self.headers['cookie'])
+
+		self.wfile.write('<img style="margin: 8px" src="storage/funky.png"></img><br>\n'
+			+ '<i style="font-size: 7pt">Funky Store &copy; ' + COPY + '<br>\n')
+		if u:
+			motd = db['motd'].find().sort('timestamp', -1).limit(1)
+			if motd.count():
+				motd = motd.next()
+				if 'text' in motd:
+					self.wfile.write('<b>' + motd['text'] + '</b><br>\n')
+		self.wfile.write('</i>\n')
 
 		if not u:
 			self.wfile.write('<i>Welcome, Stranger!</i>\n')
