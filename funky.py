@@ -6,6 +6,7 @@ import urlparse
 import urllib
 from os import urandom
 import base64
+import hashlib
 from datetime import datetime
 import money
 import magic
@@ -283,10 +284,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					'Login: <input type="text" size="40" name="login"><br>Nickname: <input type="text" size="40" ')
 				self.wfile.write('name="nickname"><br>Password: <input name="pwd" type="password" ')
 				self.wfile.write(
-					'size="40"><br><input type="submit" value="Sign up"></form><h3>ACHTUNG! In this raw in-development version ')
-				self.wfile.write(
-					'we store your passwords in plain text form, so do not use your regular passwords you already ')
-				self.wfile.write('using on another web sites.</h3>')
+					'size="40"><br><input type="submit" value="Sign up"></form><h3>')
 
 			self.html_end()
 
@@ -501,7 +499,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			data, l = self.get_post_data()
 			if 'login' in data and 'pwd' in data:
 				if q['do'][0] == 'login':
-					acc = db.accounts.find_one({'login': data['login'][0], 'password': data['pwd'][0], 'locked': False})
+					acc = db.accounts.find_one({'login': data['login'][0], 'password': cook_password(data['pwd'][0],
+						data['login'][0]),'locked': False})
 					if acc:
 						self.send_response(200, 'OK')
 						cookie = base64.b64encode(urandom(32))
@@ -520,7 +519,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					if acc:
 						self.html_redirect('/register?error=1&message=Account ' + data['login'][0] + ' already exist.')
 					else:
-						db['accounts'].insert({'login': data['login'][0], 'password': data['pwd'][0], 'money': 0.0, \
+						db['accounts'].insert({'login': data['login'][0], 'password': cook_password(data['pwd'][0],
+												data['login'][0]), 'money': 0.0,
 											   'locked': False, 'nickname': data['nickname'][0],
 											   'flags': ['money_recv', 'money_send']})
 						self.html_redirect('/register?error=0')
@@ -711,7 +711,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						if 'locked' in data and data['locked'][0] == 'on':
 							d['locked'] = True
 						if 'password' in data:
-							d['password'] = data['password'][0]
+							d['password'] = cook_password(data['password'][0], q['login'][0])
 						db['accounts'].update({'login': q['login'][0]}, {'$set': d})
 						self.html_redirect('/admin?go=accounts&login=' + q['login'][0])
 				elif q['go'][0] == 'motd':
@@ -774,6 +774,16 @@ def user_is_admin(username):
 
 def get_some_random_string():
 	return binascii.hexlify(os.urandom(16))
+
+def cook_password(password, login):
+	passwordhash = hashlib.sha256(password).digest()
+	superpassword = bytearray(passwordhash)
+	loginhash = hashlib.sha256(login).digest()
+	superlogin = bytearray(loginhash)
+	for x in range(0, 32):
+		superpassword[x] ^= superlogin[x]
+	return base64.b64encode(superpassword)
+
 
 if __name__ == '__main__':
 	dbclient = pymongo.MongoClient(config['dbUri'])
