@@ -133,7 +133,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				query = {'in_stock': True}
 				if is_admin:
 					query = {}
-				for i in db['items'].find(query):
+				for i in db['items'].find(query).sort('timestamp', 1):
 					self.html_block_start()
 					# modified buy form
 					self.wfile.write('<form name="buy" style="margin: 0" method="post" action="buy?itemid=' + str(
@@ -613,7 +613,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					try:
 						db['items'].insert(
 							{'item_id': data['itemid'][0], 'text': data['text'][0], 'price': float(data['price'][0]), \
-							 'in_stock': in_stock})
+							 'in_stock': in_stock, 'timestamp': datetime.now()})
 						self.html_redirect('/')
 					except (KeyError, TypeError):
 						self.html_redirect(missing_data_url)
