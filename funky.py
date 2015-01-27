@@ -145,9 +145,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						in_stock = ''
 						if i['in_stock']:
 							in_stock = 'checked="checked"'
+						text = i['text'].replace('"', '&#34;')
 						self.wfile.write('<form name="item-update" style="margin: 4px" method="post" ' \
 										 + 'action="item?do=update&itemid=' + i['item_id'] + '">' \
-										 + 'text <input type="text" size="32" name="text">' \
+										 + 'text <input type="text" size="32" name="text" value="' + text + '">' \
 										 + ' price <input type="text" size="6" name="price" value="' + str(
 							i['price']) + '">' \
 										 + ' in stock <input type="checkbox" name="in_stock" ' + in_stock + '>' \
