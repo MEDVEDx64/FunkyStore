@@ -149,7 +149,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						text = i['text'].replace('"', '&#34;')
 						self.wfile.write('<form name="item-update" style="margin: 4px" method="post" ' \
 										 + 'action="item?do=update&itemid=' + i['item_id'] + '">' \
-										 + 'text <input type="text" size="32" name="text" value="' + text + '">' \
+										 + 'text <input type="text" size="50" name="text" value="' + text + '">' \
 										 + ' price <input type="text" size="6" name="price" value="' + str(
 							i['price']) + '">' \
 										 + ' in stock <input type="checkbox" name="in_stock" ' + in_stock + '>' \
@@ -377,6 +377,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				nick = 'Steve?'
 			self.wfile.write('<form name="settings" method="post" action="settings">')
 			self.wfile.write('Nickname: <input type="text" size="32" value="' + nick['nickname'] + '" name="nickname"><br>')
+			self.wfile.write('New password: <input type="password" size="32" name="password"><br>')
 			self.wfile.write('<input type="submit" value="Submit"></form>\n')
 
 			self.html_end()
@@ -674,9 +675,13 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				return
 
 			data, l = self.get_post_data()
+			set_query = {}
 			if 'nickname' in data:
-				db['accounts'].update({'login': username}, {'$set': {'nickname': data['nickname'][0]}})
-				self.html_redirect('/message?m=Success')
+				set_query['nickname'] = data['nickname'][0]
+			if 'password' in data:
+				set_query['password'] = cook_password(data['password'][0], username)
+			db['accounts'].update({'login': username}, {'$set': set_query})
+			self.html_redirect('/message?m=Success')
 
 		elif url.path == '/magic':
 			u = None
