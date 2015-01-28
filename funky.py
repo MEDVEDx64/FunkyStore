@@ -68,7 +68,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			if 'cookie' in self.headers:
 				u = get_user_by_cookie(self.headers['cookie'])
 
-		self.wfile.write('<img style="margin: 8px" src="storage/funky.png"></img><br>\n'
+		self.wfile.write('<a href="/"><img style="margin: 8px" src="storage/funky.png"></img></a><br>\n'
 			+ '<i style="font-size: 7pt">Funky Store &copy; ' + COPY + '<br>\n')
 		if u:
 			motd = db['motd'].find().sort('timestamp', -1).limit(1)
@@ -151,7 +151,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 										 + 'action="item?do=update&itemid=' + i['item_id'] + '">' \
 										 + 'text <input type="text" size="50" name="text" value="' + text + '">' \
 										 + ' price <input type="text" size="6" name="price" value="' + str(
-							i['price']) + '">' \
+											i['price']) + '">' \
 										 + ' in stock <input type="checkbox" name="in_stock" ' + in_stock + '>' \
 										 + ' <input type="submit" value="Update"></form><x style="color: #335">[' + i[
 											 'item_id'] + ']</x>' \
@@ -291,9 +291,13 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		elif url.path == '/logout':
 			self.send_response(200, 'OK')
 			self.end_headers()
+			q = urlparse.parse_qs(url.query)
 			if 'cookie' in self.headers:
 				cookie = self.headers['cookie'].split(';')[-1].strip()
-				db['sessions'].update({'cookie': cookie}, {'$set': {'open': False}})
+				if 'uber' in q:
+					db['sessions'].update({'login': get_user_by_cookie(cookie)}, {'$set': {'open': False}}, multi = True)
+				else:
+					db['sessions'].update({'cookie': cookie}, {'$set': {'open': False}})
 				self.html_redirect('/')
 			else:
 				self.wfile.write('Huh?\n')
@@ -340,7 +344,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.wfile.write('Input code:<br>'
 				+ '<form method="post" name="magic" action="magic">'
 				+ '<input type="text" name="code" size="40"><input type="submit" value="Submit"></form>'
-				+ '<i style="font-size: 8pt">MagicFSC1 code format is accepted (xx-111111-1234567890)<br>'
+				+ '<i style="font-size: 8pt">\'1st generation\' code format is accepted (xx-111111-1234567890)<br>'
 				+ 'Append "~" to beginning of a code to verify it.</i>\n')
 
 			q = urlparse.parse_qs(url.query)
@@ -377,8 +381,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				nick = 'Steve?'
 			self.wfile.write('<form name="settings" method="post" action="settings">')
 			self.wfile.write('Nickname: <input type="text" size="32" value="' + nick['nickname'] + '" name="nickname"><br>')
+			self.wfile.write('Old password: <input type="password" size="32" name="oldpassword"><br>')
 			self.wfile.write('New password: <input type="password" size="32" name="password"><br>')
 			self.wfile.write('<input type="submit" value="Submit"></form>\n')
+			self.wfile.write('<a href="/logout?uber=1">Close all sessions</a>\n')
 
 			self.html_end()
 
@@ -679,7 +685,12 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			if 'nickname' in data:
 				set_query['nickname'] = data['nickname'][0]
 			if 'password' in data:
-				set_query['password'] = cook_password(data['password'][0], username)
+				acc = db['accounts'].find_one({'login': username}, {'password': 1})
+				if 'oldpassword' in data and acc and cook_password(data['oldpassword'][0], username) == acc['password']:
+					set_query['password'] = cook_password(data['password'][0], username)
+				else:
+					self.html_redirect('/message?m=Cannot change password: old password is not valid.')
+					return
 			db['accounts'].update({'login': username}, {'$set': set_query})
 			self.html_redirect('/message?m=Success')
 
