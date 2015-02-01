@@ -3,7 +3,7 @@
 ***
 *Disclaimer. This stuff may not be suitable for you, because
 it is initially were written for my own Minecraft server.
-It is quite possible that you will need something to change in the code.*
+It is quite possible that you will need to change something in the code.*
 ***
 *Disclaimer #2. FunkyStore may become a reason of your Minecraft server crash.*
 ***
