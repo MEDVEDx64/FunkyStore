@@ -588,7 +588,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					if 'amount' in data:
 						amount = int(data['amount'][0])
 
-					if amount > 0 and amount <= 256:  # WARNING: high values may knock MC server out (minecraft bug?)
+					if amount > 0 and amount <= config['store']['maxAmount']:  # WARNING: high values may knock MC server out (minecraft bug?)
 						d = db['items'].find_one({'item_id': itemid}, {'price': 1, 'left': 1})
 						if d:
 							if 'left' in d:

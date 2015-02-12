@@ -7,5 +7,9 @@ config = {
 		"host": "pyroland.who",
 		"port": 25575,
 		"password": "meinkraft68"
+	},
+
+	"store": {
+		"maxAmount": 256
 	}
 }
