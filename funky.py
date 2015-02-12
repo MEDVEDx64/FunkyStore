@@ -139,20 +139,29 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					# modified buy form
 					self.wfile.write('<form name="buy" style="margin: 0" method="post" action="buy?itemid=' + str(
 						i['item_id']) + '">')
-					self.wfile.write('<div class="inner inner-item-name">' +
-						i['text'] + ' &ndash; <b>' + str(i['price']) + 'f</b></div>')
+					self.wfile.write('<div class="inner inner-item-name">' + i['text'])
+					if 'left' in i:
+						self.wfile.write(' <x style="')
+						if i['left'] <= 0:
+							self.wfile.write('color: #f11; ')
+						self.wfile.write('font-size: 9pt">(' + str(i['left']) + ')</x>')
+					self.wfile.write(' &ndash; <b>' + str(i['price']) + 'f</b></div>')
 					self.wfile.write('<div class="inner inner-inputs"><input type="text" size="4"'
 						+ 'name="amount" value="1"> <input type="submit" value="Buy"></div></form>\n')
 					if is_admin:
 						in_stock = ''
 						if i['in_stock']:
 							in_stock = 'checked="checked"'
+						left = ''
+						if 'left' in i:
+							left = str(i['left'])
 						text = i['text'].replace('"', '&#34;')
 						self.wfile.write('<form name="item-update" style="margin: 4px" method="post" ' \
 										 + 'action="item?do=update&itemid=' + i['item_id'] + '">' \
 										 + 'text <input type="text" size="50" name="text" value="' + text + '">' \
-										 + ' price <input type="text" size="6" name="price" value="' + str(
+										 + ' price <input type="text" size="8" name="price" value="' + str(
 											i['price']) + '">' \
+										 + ' left <input type="text" name="left" size="6" value="' + left +'">'
 										 + ' in stock <input type="checkbox" name="in_stock" ' + in_stock + '>' \
 										 + ' <input type="submit" value="Update"></form><x style="color: #335">[' + i[
 											 'item_id'] + ']</x>' \
@@ -166,7 +175,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									 + 'action="item?do=insert">' \
 									 + 'item_id[ data] <input type="text" size="24" name="itemid">' \
 									 + ' text <input type="text" size="32" name="text">' \
-									 + ' price <input type="text" size="6" name="price">' \
+									 + ' price <input type="text" size="8" name="price">' \
+									 + ' left <input type="text" name="left" size="6">'
 									 + ' in stock <input type="checkbox" name="in_stock" checked="true">' \
 									 + ' <input type="submit" value="Add"></form>\n')
 					self.html_block_end()
@@ -576,8 +586,14 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						amount = int(data['amount'][0])
 
 					if amount > 0 and amount <= 256:  # WARNING: high values may knock MC server out (minecraft bug?)
-						d = db['items'].find_one({'item_id': itemid}, {'price': 1})
+						d = db['items'].find_one({'item_id': itemid}, {'price': 1, 'left': 1})
 						if d:
+							if 'left' in d:
+								if d['left'] <= 0:
+									self.html_redirect('/message?m=Out of stock')
+									return
+								if amount > d['left']:
+									amount = d['left']
 							bank_user = '__BANK__'
 							if not db['accounts'].find_one({'login': bank_user}):
 								db['accounts'].insert({'login': bank_user, 'money': 0.0, 'password': '0',
@@ -590,6 +606,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									s = itemid.strip().split(' ')
 									item = s[0]
 									data = s[1]
+								if 'left' in d:
+									db['items'].update({'item_id': itemid}, {'$set': {'left': d['left'] - amount}})
 								result = default_driver.process(nick, item, amount, data)
 								if result:
 									self.html_redirect('/message?m=Transaction fault: ' + str(result))
@@ -600,7 +618,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						else:
 							self.html_redirect('/message?m=No%20such%20item')
 					else:
-						self.html_redirect('/message?m=Invalid%20amount')
+						self.html_redirect('/message?m=Invalid amount (must not exceed '
+							+ str(config['store']['maxAmount']) + ')')
 				else:
 					self.html_redirect('/message?m=Item%20not%20specified')
 			else:
@@ -621,22 +640,29 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					in_stock = True
 
 				if q['do'][0] == 'insert':
+					d = {'item_id': data['itemid'][0], 'text': data['text'][0], 'price': float(data['price'][0]),
+							 'in_stock': in_stock, 'timestamp': datetime.now()}
+					if 'left' in data:
+						d['left'] = int(data['left'][0])
 					try:
-						db['items'].insert(
-							{'item_id': data['itemid'][0], 'text': data['text'][0], 'price': float(data['price'][0]), \
-							 'in_stock': in_stock, 'timestamp': datetime.now()})
+						db['items'].insert(d)
 						self.html_redirect('/')
 					except (KeyError, TypeError):
 						self.html_redirect(missing_data_url)
 
 				elif q['do'][0] == 'update':
 					set_query = {'in_stock': in_stock}
+					unset_query = {}
 					if 'text' in data:
 						set_query['text'] = data['text'][0]
 					if 'price' in data:
 						set_query['price'] = float(data['price'][0])
+					if 'left' in data:
+						set_query['left'] = int(data['left'][0])
+					else:
+						unset_query['left'] = ''
 					if 'itemid' in q:
-						db['items'].update({'item_id': q['itemid'][0]}, {'$set': set_query})
+						db['items'].update({'item_id': q['itemid'][0]}, {'$set': set_query, '$unset': unset_query})
 						self.html_redirect('/')
 					else:
 						self.html_redirect('/message?m=No item ID specified')
