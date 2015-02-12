@@ -8,6 +8,7 @@ from os import urandom
 import base64
 import hashlib
 from datetime import datetime
+from driver import default_driver
 import money
 import magic
 import subprocess
@@ -589,7 +590,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									s = itemid.strip().split(' ')
 									item = s[0]
 									data = s[1]
-								rcon.ItemSender(nick, item, amount, data).start()
+								result = default_driver.process(nick, item, amount, data)
+								if result:
+									self.html_redirect('/message?m=Transaction fault: ' + str(result))
+									return
 								db['sold'].insert({'who': nick, 'what': itemid, 'when': datetime.now(),
 												   'amount': amount, 'price': d['price']})
 							self.html_redirect('/?m=' + message)
