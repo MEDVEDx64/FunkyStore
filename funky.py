@@ -145,7 +145,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						if i['left'] <= 0:
 							self.wfile.write('color: #f11; ')
 						self.wfile.write('font-size: 9pt">(' + str(i['left']) + ')</x>')
-					self.wfile.write(' &ndash; <b>' + str(i['price']) + 'f</b></div>')
+					price = 'Free'
+					if i['price']:
+						price = str(i['price']) + 'f'
+					self.wfile.write(' &ndash; <b>' + price + '</b></div>')
 					self.wfile.write('<div class="inner inner-inputs"><input type="text" size="4"'
 						+ 'name="amount" value="1"> <input type="submit" value="Buy"></div></form>\n')
 					if is_admin:
@@ -598,7 +601,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							if not db['accounts'].find_one({'login': bank_user}):
 								db['accounts'].insert({'login': bank_user, 'money': 0.0, 'password': '0',
 													   'locked': True, 'flags': ['money_recv', 'system']})
-							ok, message = money.transfer(db, u, bank_user, d['price'] * amount)
+							ok, message = True, 'Success'
+							if d['price']:
+								ok, message = money.transfer(db, u, bank_user, d['price'] * amount)
 							if ok:
 								item = itemid
 								data = '0'
