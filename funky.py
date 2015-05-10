@@ -134,7 +134,13 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				query = {'in_stock': True}
 				if is_admin:
 					query = {}
+				is_sold_items_hidden = False
 				for i in db['items'].find(query).sort('timestamp', 1):
+					userobj = db['accounts'].find_one({'login': username})
+					if not is_admin and 'hide_sold' in userobj and userobj['hide_sold'] and 'left' in i and i['left'] == 0:
+						is_sold_items_hidden = True
+						# Skipping sold stuff
+						continue
 					self.html_block_start()
 					# modified buy form
 					self.wfile.write('<form name="buy" style="margin: 0" method="post" action="buy?itemid=' + str(
@@ -188,6 +194,11 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.html_login()
 
 			self.html_block_end()
+			if is_sold_items_hidden:
+				self.html_block_start()
+				self.wfile.write('<i style="font-size: 10pt">Some sold-out item entries is not shown, '
+					+ 'check your <a style="color: #436" href="/settings">settings</a> if you want to see them.</i>')
+				self.html_block_end()
 			self.html_end()
 
 		elif url.path == '/message':
@@ -390,14 +401,19 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.html_start()
 			self.html_generic()
 
-			nick = db['accounts'].find_one({'login': username}, {'nickname': 1})
+			nick = db['accounts'].find_one({'login': username}, {'nickname': 1, 'hide_sold': 1})
 			if not nick:
 				nick = 'Steve?'
+			hide_sold = ''
+			if 'hide_sold' in nick and nick['hide_sold']:
+				hide_sold = 'checked="checked"'
 			self.wfile.write('<form name="settings" method="post" action="settings">')
-			self.wfile.write('Nickname: <input type="text" size="32" value="' + nick['nickname'] + '" name="nickname"><br>')
-			self.wfile.write('Old password: <input type="password" size="32" name="oldpassword"><br>')
-			self.wfile.write('New password: <input type="password" size="32" name="password"><br>')
-			self.wfile.write('<input type="submit" value="Submit"></form>\n')
+			self.wfile.write('Nickname: <input type="text" size="32" value="' + nick['nickname'] + '" name="nickname"/><br>')
+			self.wfile.write('Old password: <input type="password" size="32" name="oldpassword"/><br>')
+			self.wfile.write('New password: <input type="password" size="32" name="password"/><br>')
+			if not user_is_admin(username):
+				self.wfile.write('Hide sold items from store: <input type="checkbox" name="hide_sold" ' + hide_sold + '/><br>')
+			self.wfile.write('<input type="submit" value="Submit"/></form>\n')
 			self.wfile.write('<a href="/logout?uber=1">Close all sessions</a>\n')
 
 			self.html_end()
@@ -719,6 +735,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			set_query = {}
 			if 'nickname' in data:
 				set_query['nickname'] = data['nickname'][0]
+			h = False
+			if 'hide_sold' in data and data['hide_sold'][0] == 'on':
+				h = True
+			set_query['hide_sold'] = h
 			if 'password' in data:
 				acc = db['accounts'].find_one({'login': username}, {'password': 1})
 				if 'oldpassword' in data and acc and cook_password(data['oldpassword'][0], username) == acc['password']:
