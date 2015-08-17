@@ -9,6 +9,7 @@ import base64
 import hashlib
 from datetime import datetime
 from driver import default_driver
+from time import sleep
 import money
 import magic
 import subprocess
@@ -28,7 +29,8 @@ COPY = '2015 MEDVEDx64. Thanks to dmitro.'
 class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_start(self):
 		self.wfile.write(
-			'<html><head><title>Funky Store</title><link rel="stylesheet" type="text/css" href="storage/style.css" /></head>')
+			'<html><head><title>Funky Store</title><link rel="stylesheet" type="text/css" href="storage/style.css" />'
+			+ '<meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head>')
 		self.wfile.write('<body><center>\n')
 
 	def html_end(self):
@@ -57,7 +59,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 	def html_main_menu(self, user='__WHO__'):
 		self.wfile.write('<a href="/">Home</a> <a href="/print">Print</a> '
-						 + '<a href="/money">Transfer</a> <a href="/magic">Redeem a code</a> '
+						 + '<a href="/money">Transfer</a> <a href="/sell">Sell</a> <a href="/magic">Redeem a code</a> '
 						 + '<a href="/money?action=list">History</a> <a href="/settings">Settings</a>')
 		if user_is_admin(user):
 			self.wfile.write(' <a style="color: #fba" href="/admin">Admin</a>')
@@ -259,6 +261,62 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('Target account: <input type="text" size="60" name="destination">')
 				self.wfile.write('<br>Amount: <input name="amount" type="text" size="20"><br>')
 				self.wfile.write('<input type="submit" value="Transfer"></form>\n')
+
+			self.html_end()
+
+		elif url.path == '/sell':
+			username = self.get_user_by_cookie()
+			if not username:
+				self.html_redirect('/')
+				return
+
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+			self.html_generic(url_query = url.query)
+
+			self.wfile.write('<b><i>The marketplaces allows you to sell blocks. Visit one of the marketplaces'
+				+ ' listed below and place your blocks on markers (usually made of Dark Prismarine),'
+				+ " then get back to this page and click the marketplace's title link.</i></b><hr>")
+			has_markets = False
+
+			q = urlparse.parse_qs(url.query)
+			if 'market' in q:
+				reward = 0.0
+				r = rcon.get_rcon()
+				m = db['markets'].find_one({'short_name': q['market'][0]})
+				for c in m['blocks']:
+					b = str(c[0]) + ' ' + str(c[1]) + ' ' + str(c[2])
+					resp = r.command('testforblock ' + b + ' air')
+					for name in m['accept']:
+						if resp and name in resp:
+							reward += m['accept'][name]['reward']
+							r.command('setblock ' + b + ' air')
+							db['deals'].insert({'short_name': m['short_name'], 'block': name,
+								'who': username, 'reward': m['accept'][name]['reward'], 'when': datetime.now()})
+							sleep(0.25)
+							break
+
+				money.transfer(db, '__RESERVE__', username, reward)
+				self.html_redirect('/sell?m=You have earned ' + str(reward) + ' funks.')
+
+			markets = db['markets'].find().sort('text', 1)
+			for e in markets:
+				if 'disabled' in e and e['disabled']:
+					continue
+
+				if not has_markets: has_markets = True
+				self.html_block_start()
+				self.wfile.write('<a style="color: #123" href="/sell?market=' + e['short_name'] + '"">')
+				self.wfile.write(e['text'].encode('utf-8'))
+				self.wfile.write('</a><br><x style="font-size: 8pt"></a>')
+				for a in e['accept']:
+					self.wfile.write(a + ' (' + str(e['accept'][a]['reward']) + 'f)<br>')
+				self.wfile.write('</x>')
+				self.html_block_end()
+
+			if not has_markets:
+				self.wfile.write('<h4>No marketplaces available.</h4>')
 
 			self.html_end()
 

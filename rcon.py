@@ -5,7 +5,10 @@ from time import sleep
 
 def get_rcon():
 	rcfg = config['rconServer']
-	return mcrcon.MCRcon(rcfg['host'], rcfg['port'], rcfg['password'])
+	r = mcrcon.MCRcon()
+	r.connect(rcfg['host'], rcfg['port'])
+	r.login(rcfg['password'])
+	return r
 
 class DetachedRconExecutor(threading.Thread):
 	def __init__(self):
@@ -19,7 +22,7 @@ class DetachedRconExecutor(threading.Thread):
 		try:
 			self.execute()
 		finally:
-			self.rcon.close()
+			self.rcon.disconnect()
 
 class AnyCommandExecutor(DetachedRconExecutor):
 	def __init__(self, cmd):
@@ -27,7 +30,7 @@ class AnyCommandExecutor(DetachedRconExecutor):
 		self.cmd = cmd
 
 	def execute(self):
-		self.rcon.send(self.cmd)
+		self.rcon.command(self.cmd)
 
 class Teleporter(AnyCommandExecutor):
 	def __init__(self, nick, x, y, z):
@@ -51,5 +54,5 @@ class ItemSender(DetachedRconExecutor):
 			if amount_left < 64:
 				c = amount_left
 			amount_left -= c
-			self.rcon.send('give ' + self.nick + ' ' + self.item_id + ' ' + str(c) + ' ' + self.data)
+			self.rcon.command('give ' + self.nick + ' ' + self.item_id + ' ' + str(c) + ' ' + self.data)
 			sleep(0.5)
