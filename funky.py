@@ -316,6 +316,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('<a style="color: #123" href="/sell?market=' + e['short_name'] + '"">')
 				self.wfile.write(e['text'].encode('utf-8'))
 				self.wfile.write('</a><br><x style="font-size: 8pt"></a>')
+				self.wfile.write('<i>' + str(len(e['blocks'])) + ' slots available</i><br>')
 				for a in e['accept']:
 					big = e['accept'][a]['reward'] >= 1000.0
 					if big: self.wfile.write('<b>')
