@@ -317,11 +317,15 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write(e['text'].encode('utf-8'))
 				self.wfile.write('</a><br><x style="font-size: 8pt"></a>')
 				for a in e['accept']:
+					big = e['accept'][a]['reward'] >= 1000.0
+					if big: self.wfile.write('<b>')
 					if 'reward_low' in e['accept'][a]:
 						self.wfile.write(a + ' <b style="color: #438">(from ' + str(e['accept'][a]['reward_low'])
-							+ 'f to ' + str(e['accept'][a]['reward']) + 'f)</b><br>')
+							+ 'f to ' + str(e['accept'][a]['reward']) + 'f)</b>')
 					else:
-						self.wfile.write(a + ' (' + str(e['accept'][a]['reward']) + 'f)<br>')
+						self.wfile.write(a + ' (' + str(e['accept'][a]['reward']) + 'f)')
+					if big: self.wfile.write('</b>')
+					self.wfile.write('<br>')
 				self.wfile.write('</x>')
 				self.html_block_end()
 
