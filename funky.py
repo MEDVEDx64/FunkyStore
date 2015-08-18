@@ -5,6 +5,7 @@ from config import config
 import urlparse
 import urllib
 from os import urandom
+import random as rnd
 import base64
 import hashlib
 from datetime import datetime
@@ -290,7 +291,12 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					for name in m['accept']:
 						resp = r.command('testforblock ' + b + ' ' + m['accept'][name]['itemid'])
 						if resp and 'Successfully' == resp[:12]:
-							reward += m['accept'][name]['reward']
+							if 'reward_low' in m['accept'][name]:
+								rnd.seed()
+								reward += round(rnd.random() * (m['accept'][name]['reward'] 
+									- m['accept'][name]['reward_low']) + m['accept'][name]['reward_low'], 2)
+							else:
+								reward += m['accept'][name]['reward']
 							r.command('setblock ' + b + ' air')
 							db['deals'].insert({'short_name': m['short_name'], 'block': name,
 								'who': username, 'reward': m['accept'][name]['reward'], 'when': datetime.now()})
@@ -311,7 +317,11 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write(e['text'].encode('utf-8'))
 				self.wfile.write('</a><br><x style="font-size: 8pt"></a>')
 				for a in e['accept']:
-					self.wfile.write(a + ' (' + str(e['accept'][a]['reward']) + 'f)<br>')
+					if 'reward_low' in e['accept'][a]:
+						self.wfile.write(a + ' <b style="color: #438">(from ' + str(e['accept'][a]['reward_low'])
+							+ 'f to ' + str(e['accept'][a]['reward']) + 'f)</b><br>')
+					else:
+						self.wfile.write(a + ' (' + str(e['accept'][a]['reward']) + 'f)<br>')
 				self.wfile.write('</x>')
 				self.html_block_end()
 
