@@ -287,9 +287,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				m = db['markets'].find_one({'short_name': q['market'][0]})
 				for c in m['blocks']:
 					b = str(c[0]) + ' ' + str(c[1]) + ' ' + str(c[2])
-					resp = r.command('testforblock ' + b + ' air')
 					for name in m['accept']:
-						if resp and name in resp:
+						resp = r.command('testforblock ' + b + ' ' + m['accept'][name]['itemid'])
+						if resp and 'Successfully' == resp[:12]:
 							reward += m['accept'][name]['reward']
 							r.command('setblock ' + b + ' air')
 							db['deals'].insert({'short_name': m['short_name'], 'block': name,
