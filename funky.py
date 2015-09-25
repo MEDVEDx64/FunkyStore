@@ -330,7 +330,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('<a style="color: #123" href="/sell?market=' + e['short_name'] + '">')
 				self.wfile.write(e['text'].encode('utf-8'))
 				self.wfile.write('</a>')
-				if 'xcoord' in e and 'zcoord' in e:
+				if 'xcoord' in e and 'zcoord' in e and 'markets' in config:
 					self.wfile.write('&nbsp;<a href="' + config['markets']['googleMapUri'] + '#/' + str(e['xcoord']) + '/64/' + str(e['zcoord'])
 						+ '/max/0/0"><img src="/storage/items/map_filled.png" width="20"></a>')
 				self.wfile.write('<br><x style="font-size: 8pt">')
