@@ -61,7 +61,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_main_menu(self, user='__WHO__'):
 		self.wfile.write('<a href="/">Home</a> <a href="/print">Print</a> '
 						 + '<a href="/money">Transfer</a> <a href="/sell">Sell</a> <a href="/magic">Redeem a code</a> '
-						 + '<a href="/money?action=list">History</a> <a href="/settings">Settings</a>')
+						 + '<a href="/vouchers">My Vouchers</a> <a href="/money?action=list">History</a> '
+						 + '<a href="/settings">Settings</a>')
 		if user_is_admin(user):
 			self.wfile.write(' <a style="color: #fba" href="/admin">Admin</a>')
 		self.wfile.write('<hr>\n')
@@ -131,8 +132,11 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			username = get_user_by_cookie(cookie)
 			self.html_generic(username, url.query)
 			if username:
+				self.wfile.write('Buy a voucher: <form name="cashout" method="post" action="cashout">'
+				+ '<input type="text" size="8" name="amount" value="0.0"> '
+				+ '<input type="submit" value="Submit"></form>')
 				self.wfile.write("<h5><b style=\"color: #e11\">Warning:</b> "
-					+ "your order won't be delivered, unless you're in game!</h5>")
+					+ "your order won't be delivered, unless you're in game! (this doesn't affects vouchers above)</h5>")
 				is_admin = user_is_admin(username)
 				query = {'in_stock': True}
 				if is_admin:
@@ -338,6 +342,33 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			if not has_markets:
 				self.wfile.write('<h4>No marketplaces available.</h4>')
 
+			self.html_end()
+
+		elif url.path == '/vouchers':
+			username = self.get_user_by_cookie()
+			if not username:
+				self.html_redirect('/')
+				return
+
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+			self.html_generic()
+
+			self.html_block_start()
+			self.wfile.write("<h4>Your voucher codes goes here, feel free to give 'em to anybody you want. "
+				+ 'Once a code is being used by someone, it disappears from this list.</h4>'
+				+ '<div class="code_list"><center><table style="border-spacing: 40px 0">')
+			has_codes = False
+			for c in db[magic.COLLECTION_NAME].find({'owner': username, 'left': {'$ne': 0}}).sort('value'):
+				has_codes = True
+				self.wfile.write('<tr><td><b>' + magic.build_code(c['head'], c['ident'], c['data'])
+					+ '</b></td><td><i style="color: #889">' + str(c['value']) + 'f</i></td></tr>\n')
+
+			if not has_codes:
+				self.wfile.write("You didn't bought any vouchers yet.")
+			self.wfile.write('</table></center></div>')
+			self.html_block_end()
 			self.html_end()
 
 		elif url.path == '/print':
@@ -802,6 +833,29 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.send_response(200, 'OK.')
 			self.end_headers()
 			self.html_redirect('/message?m=Print task successfully submitted')
+
+		elif url.path == '/cashout':
+			username = self.get_user_by_cookie()
+			if not username:
+				self.send_error(404, 'Not Found')
+				return
+
+			data, l = self.get_post_data()
+			if not 'amount' in data or float(data['amount'][0]) <= 0:
+				self.html_redirect('/?m=Invalid amount')
+				return
+
+			amount = float(data['amount'][0])
+			ok, msg = money.transfer(db, username, '__BANK__', amount)
+			if not ok:
+				self.html_redirect('/?m=' + msg)
+				return
+			voucher = magic.gen_single_order(db, amount, username)
+			if not voucher:
+				money.transfer(db, '__BANK__', username, amount)
+				self.html_redirect('/?m=Voucher cannot be generated')
+
+			self.html_redirect('/?m=Success! Check My Vouchers tab for new codes.')
 
 		elif url.path == '/settings':
 			username = self.get_user_by_cookie()

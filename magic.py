@@ -2,6 +2,7 @@
 
 import money
 from datetime import datetime
+from random import randint
 
 """
 
@@ -207,43 +208,74 @@ def decrement_left_value(db, info):
 
 def track_origin(n):
 	# Code origin tracking
-		if n == 0:
-			return 'Undefined'
-		elif n in [111, 222, 333, 444]:
-			return 'Hand-crafted'
-		elif n in [500, 555]:
-			return 'Vanilla'
-		elif n in range(1, 9):
-			return 'Administrator single issue'
-		elif n == 9:
-			return 'Administrator issue'
-		elif n in range(10, 75):
-			return 'Single order'
-		elif n in range(75, 99):
-			return 'Multiple order'
-		elif n == 99:
-			return 'Mass production order'
-		elif n in range(300, 330):
-			return 'Promotional'
-		elif n in range(400, 420):
-			return 'Freeware'
-		elif n in range(420, 425):
-			return 'Beerware'
-		elif n in range(425, 430):
-			return 'Gifted'
-		elif n in range(430, 440):
-			return 'Found'
-		elif n in range(440, 449):
-			return 'Prize'
-		elif n == 499:
-			return 'Mined'
-		elif n in [777, 768]:
-			return 'From another universe'
-		elif n == 666:
-			return 'hello from AlexX'
-		elif n in range(890, 990):
-			return 'Unknown'
-		elif n in range(990, 1000):
-			return 'Unusual'
-		else:
-			return 'Serial issue #' + str(n)
+	if n == 0:
+		return 'Undefined'
+	elif n in [111, 222, 333, 444]:
+		return 'Hand-crafted'
+	elif n in [500, 555]:
+		return 'Vanilla'
+	elif n in range(1, 9):
+		return 'Administrator single issue'
+	elif n == 9:
+		return 'Administrator issue'
+	elif n in range(10, 75):
+		return 'Single order'
+	elif n in range(75, 99):
+		return 'Multiple order'
+	elif n == 99:
+		return 'Mass production order'
+	elif n in range(300, 330):
+		return 'Promotional'
+	elif n in range(400, 420):
+		return 'Freeware'
+	elif n in range(420, 425):
+		return 'Beerware'
+	elif n in range(425, 430):
+		return 'Gifted'
+	elif n in range(430, 440):
+		return 'Found'
+	elif n in range(440, 449):
+		return 'Prize'
+	elif n == 499:
+		return 'Mined'
+	elif n in [777, 768]:
+		return 'From another universe'
+	elif n == 666:
+		return 'hello from AlexX'
+	elif n in range(890, 990):
+		return 'Unknown'
+	elif n in range(990, 1000):
+		return 'Unusual'
+	else:
+		return 'Serial issue #' + str(n)
+
+def build_code(head, ident, data):
+	idsize = 3
+	if ident > 999:
+		idsize = 6
+	return head + '-' + str(ident).zfill(idsize) + '-' + data
+
+# Generates a money voucher and pushes it into db
+# Returns voucher string or None in case of error
+def gen_single_order(db, amount, owner_login = None):
+	attempts = 25
+	while attempts:
+		head = H_VOUCHER[0] + str(randint(3, 9))
+		ident = int(I_MONEY[0] + '0' + str(randint(35, 75)))
+		data = '8' + str(randint(0, 999999999)).zfill(9)
+
+		doc = {'head': head, 'ident': ident, 'data': data}
+		check = db[COLLECTION_NAME].find_one(doc)
+		if check:
+			attempts -= 1
+			continue
+
+		doc['left'] = 1
+		doc['value'] = float(amount)
+		if owner_login:
+			doc['owner'] = owner_login
+		db[COLLECTION_NAME].insert(doc)
+		
+		return build_code(head, ident, data)
+
+	return None
