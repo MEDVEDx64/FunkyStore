@@ -135,3 +135,7 @@ div form {
 #chart {
 	color: "black";
 }
+
+table th, table td {
+	font-size: 12px;
+}
