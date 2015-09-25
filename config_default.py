@@ -11,5 +11,11 @@ config = {
 
 	"store": {
 		"maxAmount": 256
+	},
+
+	"markets": {
+		"googleMapUri": "https://themassacre.org/doktor/"
 	}
+
+
 }

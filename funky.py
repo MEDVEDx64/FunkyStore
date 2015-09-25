@@ -287,6 +287,14 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 			q = urlparse.parse_qs(url.query)
 			if 'market' in q:
+				# Sell ban is disabled just because it is useless (user can freely register and sell things again).
+				# Uncomment lines below if you really need this feature.
+
+				#if 'sell_banned' in db['accounts'].find_one({'login': username}, {'flags': 1})['flags']:
+				#	self.html_redirect('/message?m=You have been banned from selling items on markets.')
+				#	self.html_end()
+				#	return
+
 				reward = 0.0
 				r = rcon.get_rcon()
 				m = db['markets'].find_one({'short_name': q['market'][0]})
@@ -320,10 +328,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('<a style="color: #123" href="/sell?market=' + e['short_name'] + '">')
 				self.wfile.write(e['text'].encode('utf-8'))
 				self.wfile.write('</a>')
-				xcoord = e['xcoord'] if 'xcoord' in e else 0  
-				zcoord = e['zcoord'] if 'zcoord' in e else 0  
-				self.wfile.write('&nbsp;<a href="https://themassacre.org/doktor/#/' + str(xcoord) + '/64/' + str(zcoord)
-					+ '/max/0/0"><img src="/storage/items/map_filled.png" width="20"></a>')
+				if 'xcoord' in e and 'zcoord' in e:
+					self.wfile.write('&nbsp;<a href="' + config['markets']['googleMapUri'] + '#/' + str(e['xcoord']) + '/64/' + str(e['zcoord'])
+						+ '/max/0/0"><img src="/storage/items/map_filled.png" width="20"></a>')
 				self.wfile.write('<br><x style="font-size: 8pt">')
 				self.wfile.write('<i>' + str(len(e['blocks'])) + ' slots available</i><br>')
 				for a in e['accept']:
