@@ -35,19 +35,4 @@ Becoming an administrator
 -------------------------
 
 * Register an account
-* Get to "funky" database, "accounts" collection
-* Append "admin" string to "flags" field of your account entry. It should be looking like this:
-```
-{
-  "locked": false,
-  "money": 0,
-  "flags": [
-    "money_recv",
-    "money_send",
-    "admin"
-  ],
-  "login": "beep",
-  "password": "07cbqwO9EXo6+f\/gnP3pZC1Mex58pGL72Vt\/hWunJy0=",
-  "nickname": "boop"
-}
-```
+* Append "admin" string to "flags" field of your account entry from collection "punky". It can be achieved by executing the following code in mongo console: `db.accounts.update({}, {"$push":{"flags": "admin"}})`
