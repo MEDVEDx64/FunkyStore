@@ -35,4 +35,4 @@ Becoming an administrator
 -------------------------
 
 * Register an account
-* Append "admin" string to "flags" field of your account entry from collection "punky". It can be achieved by executing the following code in mongo console: `db.accounts.update({}, {"$push":{"flags": "admin"}})`
+* Append "admin" string to "flags" field of your account entry from collection "funky". It can be achieved by executing the following code in mongo console: `db.accounts.update({}, {"$push":{"flags": "admin"}})`
