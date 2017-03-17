@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import money
+import hashlib
 from datetime import datetime
 from random import randint
+from config import config
 
 """
 
@@ -63,6 +65,8 @@ SCKV = {
 	'SC_NO_SUCH_CODE': 2001,
 	'SC_EXPIRED_CODE': 2002,
 	'SC_REVOKED_CODE': 2003,
+	'SC_REJECTED': 2004,
+	'SC_GIVING_UP': 2005,
 	'SC_GENERIC_EXECUTION_ERROR': 3000,
 	'SC_UNSUPPORTED_REQUEST': 3001,
 	'SC_DEFECTIVE_CODE': 3002,
@@ -94,7 +98,7 @@ def parse_code(code):
 			return {'status': SCKV['SC_BAD_FORMAT']}
 	out['head'] = blocks[0]
 	if len(blocks[0]) == 2: # MagicFSC1 format
-		
+
 		if len(blocks) < 3:
 			return {'status': SCKV['SC_NOT_ENOUGH_BLOCKS']}
 		if len(blocks) > 3:
@@ -136,8 +140,30 @@ def process(code, db, login):
 		query_keys = ['head', 'ident', 'data']
 		entry = db[COLLECTION_NAME].find_one({i: out[i] for i in query_keys})
 		if not entry:
-			out['status'] = SCKV['SC_NO_SUCH_CODE']
-			return out
+			if not 'mining' in config or not config['mining']['enabled'] \
+			or not out['origin'] == 'Mined':
+				out['status'] = SCKV['SC_NO_SUCH_CODE']
+				return out
+
+			# Validating mined key
+			code_cut = code
+			if code_cut[0] == '~':
+				code_cut = code_cut[1:]
+			if db['accepted'].find_one({'code': code_cut}, {'code': True}):
+				out['status'] = SCKV['SC_EXPIRED_CODE']
+				return out
+			if dry_run:
+				out['status'] = SCKV['SC_GIVING_UP']
+				return out
+			if not out['data'].startswith(config['mining']['instanceCode']) \
+			or not hashlib.sha256(code).digest()[:4] == '\0\0\0\0':
+				out['status'] = SCKV['SC_REJECTED']
+				return out
+
+			# Fake key data
+			entry = {}
+			entry['left'] = 1
+			entry['value'] = config['mining']['reward']
 
 		if not entry['left']:
 			out['status'] = SCKV['SC_EXPIRED_CODE']
@@ -175,6 +201,12 @@ def process(code, db, login):
 						out['status'] = SCKV['SC_MONEY_TRANSFER_FAILED']
 						out['message'] = msg
 						return out
+
+					if out['origin'] == 'Mined':
+						db['accepted'].insert({'code': code,
+							'reward': out['value'],
+							'who': login,
+							'when': datetime.now()})
 
 			else:
 				out['status'] = SCKV['SC_UNSUPPORTED_REQUEST']
@@ -275,7 +307,7 @@ def gen_single_order(db, amount, owner_login = None):
 		if owner_login:
 			doc['owner'] = owner_login
 		db[COLLECTION_NAME].insert(doc)
-		
+
 		return build_code(head, ident, data)
 
 	return None
