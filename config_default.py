@@ -15,7 +15,11 @@ config = {
 
 	"markets": {
 		"googleMapUri": "https://themassacre.org/doktor/"
+	},
+
+	"mining": {
+		"enabled": False,
+		"instanceCode": "editme", # must be 6 chars long, case-insensitive letters or digits
+		"reward": 100.0
 	}
-
-
 }

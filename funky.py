@@ -61,10 +61,16 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.html_end()
 
 	def html_main_menu(self, user='__WHO__'):
+		mining = ""
+		if 'mining' in config and config['mining']['enabled']:
+			mining = '<a href="/mining">Mining</a> '
+
 		self.wfile.write('<a href="/">Home</a> <a href="/print">Print</a> '
-						 + '<a href="/money">Transfer</a> <a href="/sell">Sell</a> <a href="/magic">Redeem a code</a> '
-						 + '<a href="/vouchers">My Vouchers</a> <a href="/money?action=list">History</a> '
-						 + '<a href="/settings">Settings</a>')
+						+ '<a href="/money">Transfer</a> <a href="/sell">Sell</a> '
+						+ '<a href="/magic">Redeem a code</a> '
+						+ '<a href="/vouchers">My Vouchers</a> ' + mining
+						+ '<a href="/money?action=list">History</a> '
+						+ '<a href="/settings">Settings</a>')
 		if user_is_admin(user):
 			self.wfile.write(' <a style="color: #fba" href="/admin">Admin</a>')
 		self.wfile.write('<hr>\n')
@@ -307,7 +313,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						if resp and 'Successfully' == resp[:12]:
 							if 'reward_low' in m['accept'][name]:
 								rnd.seed()
-								reward += round(rnd.random() * (m['accept'][name]['reward'] 
+								reward += round(rnd.random() * (m['accept'][name]['reward']
 									- m['accept'][name]['reward_low']) + m['accept'][name]['reward_low'], 2)
 							else:
 								reward += m['accept'][name]['reward']
@@ -350,6 +356,26 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 			if not has_markets:
 				self.wfile.write('<h4>No marketplaces available.</h4>')
+
+			self.html_end()
+
+		elif url.path == '/mining':
+			if not 'mining' in config or not config['mining']['enabled']:
+				self.send_error(404, 'Not Found')
+				return
+
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+			self.html_generic()
+
+			self.wfile.write('Mining allows users to generate voucher codes by performing computation work, '
+				+ 'just like Bitcoin does, but much more simple. Refer to <a href="https://github.com/MEDVEDx64/FunkyMiner">'
+				+ 'FunkyMiner</a> software.')
+			self.wfile.write('<div style="width: 20%; margin: 4px"><div class="code_list"><center>'
+				+ '<b>This store instance code is:</b><br>'
+				+ '<x style="font-size: 22pt; color: white">' + config['mining']['instanceCode'] + '</x><br>'
+				+ 'Current reward is ' + str(config['mining']['reward']) + ' funks.</center></div></div>')
 
 			self.html_end()
 
