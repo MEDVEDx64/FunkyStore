@@ -155,7 +155,7 @@ def process(code, db, login):
 			if dry_run:
 				out['status'] = SCKV['SC_GIVING_UP']
 				return out
-			if not out['data'].startswith(config['mining']['instanceCode']) \
+			if not out['data'].startswith(config['mining']['instanceCode'].lower()) \
 			or not hashlib.sha256(code).digest()[:4] == '\0\0\0\0':
 				out['status'] = SCKV['SC_REJECTED']
 				return out
