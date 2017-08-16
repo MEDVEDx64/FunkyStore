@@ -5,7 +5,9 @@ body
 	margin-left: 0;
 	margin-right: 0;
 
-	background: url("back.webp") no-repeat center center fixed; 
+	background: url("back.webp") no-repeat center center fixed;
+	background-color: #6b7594;
+
 	-webkit-background-size: cover;
 	-moz-background-size: cover;
 	-o-background-size: cover;
