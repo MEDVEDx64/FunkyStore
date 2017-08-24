@@ -132,6 +132,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 			username = None
 			cookie = None
+			is_sold_items_hidden = False
 
 			for h in self.headers:
 				if h == 'cookie':
@@ -149,7 +150,6 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				query = {'in_stock': True}
 				if is_admin:
 					query = {}
-				is_sold_items_hidden = False
 				for i in db['items'].find(query).sort('timestamp', 1):
 					userobj = db['accounts'].find_one({'login': username})
 					if not is_admin and 'hide_sold' in userobj and userobj['hide_sold'] and 'left' in i and i['left'] == 0:
