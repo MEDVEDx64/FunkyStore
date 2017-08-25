@@ -510,10 +510,17 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.html_start()
 			self.html_generic()
 
-			self.wfile.write('Input code:<br>'
+			self.wfile.write('Input single code:<br>'
 				+ '<form method="post" name="magic" action="magic">'
-				+ '<input type="text" name="code" size="40"><input type="submit" value="Submit"></form>'
-				+ '<i style="font-size: 8pt">\'1st generation\' code format is accepted (xx-111111-1234567890)<br>'
+				+ '<input type="text" name="code" size="40"><input type="submit" value="Submit"></form>')
+
+			if(config['magic']['fileUploadEnabled']):
+				self.wfile.write('... or upload a text file (with one code per line)'
+					+ '<form method="post" action="magic-file?m=Your request has been processed. See detailed report below." '
+					+ 'enctype="multipart/form-data"><input type="file" name="text" id="text"> '
+					+ '<input type="submit" value="Upload"></form>')
+
+			self.wfile.write('<i style="font-size: 8pt">\'1st generation\' code format is accepted (xx-111111-1234567890)<br>'
 				+ 'Append "~" to beginning of a code to verify it.</i>\n')
 
 			q = urlparse.parse_qs(url.query)
@@ -844,7 +851,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					self.send_error(404, 'Not Found')
 					return
 
-				if not 'content-type' in self.headers or not 'multipart/form-data' in self.headers['content-type']:
+				if not self.validate_multipart():
 					self.send_error(400, 'Bad Request')
 					return
 
@@ -929,6 +936,58 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			else:
 				self.html_redirect('/magic?status=Empty code')
 
+		elif url.path == '/magic-file':
+			u = self.get_user_by_cookie()
+			if not u or not config['magic']['fileUploadEnabled']:
+				self.send_error(404, "Not Found")
+				return
+
+			if not self.validate_multipart():
+				self.send_error(400, 'Bad Request')
+				return
+
+			boundary = self.headers['content-type'].split('=')[1].strip()
+			raw = cgi.parse_multipart(self.rfile, {'boundary': boundary})['text'][0].split('\n')
+
+			lines = []
+			count = 0
+
+			for line in raw:
+				entry = line.replace('\r', '').strip()
+				if len(entry) > 0:
+					lines.append(entry)
+					count += 1
+
+			report = ''
+
+			if count == 0:
+				report += 'Nothing to process'
+
+			elif count > config['magic']['maxLinesPerFile']:
+				report += 'The count of applicable lines exceeds the valid limit ('
+				+ str(config['magic']['maxLinesPerFile']) + ')'
+
+			else:
+				for x in lines:
+					r = magic.process(x, db, u)
+					report += str(r) + '<br>\n'
+
+				last = 'Processed ' + str(count) + ' lines'
+				report += '<br>\n' + ''.join(['-' for x in last]) + '<br>\n' + last
+
+			self.send_response(200, 'OK')
+			self.end_headers()
+			self.html_start()
+			self.html_generic(u, url_query = urlparse.urlparse(self.path).query)
+			self.html_block_start()
+			self.wfile.write('<div class="code_list">\n')
+
+			self.wfile.write(report)
+
+			self.wfile.write('\n</div>\n')
+			self.html_block_end()
+			self.html_end()
+
 		elif url.path == '/admin':
 			username = self.get_user_by_cookie()
 			if not user_is_admin(username):
@@ -966,6 +1025,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		else:
 			self.send_error(404, 'Not Found')
 
+	def validate_multipart(self):
+		return 'content-type' in self.headers and 'multipart/form-data' in self.headers['content-type']
+
 	def get_post_data(self):
 		l = int(self.headers['content-length'])
 		data = self.rfile.read(l)
@@ -1000,7 +1062,6 @@ def get_nickname(username):
 		return db['accounts'].find_one({'login': username}, {'nickname': 1})['nickname']
 	except KeyError:
 		return None
-
 
 def user_is_admin(username):
 	try:

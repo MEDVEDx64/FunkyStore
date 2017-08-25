@@ -21,5 +21,11 @@ config = {
 		"enabled": False,
 		"instanceCode": "editme", # must be 6 chars long, case-insensitive letters or digits
 		"reward": 100.0
+	},
+
+	# voucher processor settings
+	"magic": {
+		"fileUploadEnabled": False,
+		"maxLinesPerFile": 1024
 	}
 }
