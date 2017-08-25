@@ -514,7 +514,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				+ '<form method="post" name="magic" action="magic">'
 				+ '<input type="text" name="code" size="40"><input type="submit" value="Submit"></form>')
 
-			if(config['magic']['fileUploadEnabled']):
+			if 'magic' in config and config['magic']['fileUploadEnabled']:
 				self.wfile.write('... or upload a text file (with one code per line)'
 					+ '<form method="post" action="magic-file?m=Your request has been processed. See detailed report below." '
 					+ 'enctype="multipart/form-data"><input type="file" name="text" id="text"> '
@@ -938,7 +938,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 		elif url.path == '/magic-file':
 			u = self.get_user_by_cookie()
-			if not u or not config['magic']['fileUploadEnabled']:
+			if not u or not 'magic' in config or not config['magic']['fileUploadEnabled']:
 				self.send_error(404, "Not Found")
 				return
 
