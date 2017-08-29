@@ -2,3 +2,8 @@
 config.py
 .idea/
 mcrcon.py
+pymclevel
+run
+tmp
+storage
+funky.log
