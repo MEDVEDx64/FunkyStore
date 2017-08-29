@@ -379,6 +379,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.html_end()
 
 		elif url.path == '/mining':
+			if not self.get_user_by_cookie():
+				self.html_redirect('/')
+				return
+
 			if not 'mining' in config or not config['mining']['enabled']:
 				self.send_error(404, 'Not Found')
 				return
