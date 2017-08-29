@@ -42,3 +42,19 @@ def get_balance(db, login):
 			return 0.0
 	else:
 		return None
+
+def get_str(v):
+	if v == 0:
+		return '0.0'
+
+	if v < 0.0000000001 and v >= 1:
+		return str(v)
+
+	s = list('{0:.10f}'.format(v))
+	for i in range(len(s) - 1, -1, -1):
+		if s[i] == '0':
+			s[i] = ' '
+		else:
+			break
+
+	return ''.join(s).strip()

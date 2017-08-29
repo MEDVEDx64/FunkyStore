@@ -95,9 +95,28 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.wfile.write('<i>Welcome, Stranger!</i>\n')
 			return
 
-		self.wfile.write('<b>Account</b>: ' + u + ', <b>Balance:</b> ' + str(money.get_balance(db, u)) + 'f\n')
-		self.wfile.write(' (<a href="/logout">Logout</a>) | <a style="color: #ef8" '
-			+ 'href="/get-to-the-kernel"<a>Get to the Kernel!</a><hr>\n')
+		self.wfile.write('<b>Account</b>: ' + u + ', <b>Balance:</b> ' + money.get_str(money.get_balance(db, u)) + 'f\n')
+		self.wfile.write(' (<a href="/logout">Logout</a>) | ')
+
+		if 'mining' in config and 'allowDynamicReward' in config['mining'] and config['mining']['allowDynamicReward']:
+			value = magic.compute_reward(db) # ensure to use the actual values
+			tail = []
+			for x in db.reward.find().sort('timestamp', -1).limit(2):
+				tail.append(x['value'])
+
+			self.wfile.write('&#x2692; ' + money.get_str(value) + 'f')
+			last = config['mining']['reward']
+			if len(tail) == 2:
+				last = tail[1]
+			if len(tail) > 0:
+				if tail[0] > last:
+					self.wfile.write(' <x style="color: #2f2">&#x25CF;</x>')
+				elif tail[0] < last:
+					self.wfile.write(' <x style="color: #f22">&#x25CF</x>')
+
+			self.wfile.write(' | ')
+
+		self.wfile.write('<a style="color: #ef8" href="/get-to-the-kernel"<a>Get to the Kernel!</a><hr>\n')
 		self.html_main_menu(u)
 
 		if url_query:
@@ -375,7 +394,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.wfile.write('<div style="width: 20%; margin: 4px"><div class="code_list"><center>'
 				+ '<b>This store instance code is:</b><br>'
 				+ '<x style="font-size: 22pt; color: white">' + config['mining']['instanceCode'] + '</x><br>'
-				+ 'Current reward is ' + str(magic.compute_reward(db)) + ' funks.</center></div></div>')
+				+ 'Current reward is ' + money.get_str(magic.compute_reward(db)) + ' funks.</center></div></div>')
 
 			self.html_end()
 

@@ -338,8 +338,11 @@ def compute_reward(db):
 		if get_dt_seconds(x['timestamp']) + config['mining']['rewardCorrectionInterval'] > current:
 			return x['value']
 
-	value = config['mining']['reward'] * math.exp(-(db.accepted.count() / ((current - first) * 0.0025)))
-	value = float('{0:.4f}'.format(value))
+	value = config['mining']['reward'] * math.exp(-(db.accepted.count() / ((current - first) * 0.0001)))
+	value = float('{0:.8f}'.format(value))
+	if value == 0:
+		value = 0.00000001
+
 	db.reward.insert({'value': value, 'timestamp': datetime.now()})
 
 	return value
