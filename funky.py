@@ -375,7 +375,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.wfile.write('<div style="width: 20%; margin: 4px"><div class="code_list"><center>'
 				+ '<b>This store instance code is:</b><br>'
 				+ '<x style="font-size: 22pt; color: white">' + config['mining']['instanceCode'] + '</x><br>'
-				+ 'Current reward is ' + str(config['mining']['reward']) + ' funks.</center></div></div>')
+				+ 'Current reward is ' + str(magic.compute_reward(db)) + ' funks.</center></div></div>')
 
 			self.html_end()
 

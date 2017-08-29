@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import math
 import money
 import hashlib
 from datetime import datetime
@@ -78,6 +79,8 @@ def reverse_map(d):
 	return {v: k for k, v in d.iteritems()}
 
 SCVK = reverse_map(SCKV)
+
+epoch = datetime.utcfromtimestamp(0)
 
 def parse_code(code):
 	out = {'status': SCKV['SC_OK']}
@@ -163,7 +166,7 @@ def process(code, db, login):
 			# Fake key data
 			entry = {}
 			entry['left'] = 1
-			entry['value'] = config['mining']['reward']
+			entry['value'] = compute_reward(db)
 
 		if not entry['left']:
 			out['status'] = SCKV['SC_EXPIRED_CODE']
@@ -311,3 +314,32 @@ def gen_single_order(db, amount, owner_login = None):
 		return build_code(head, ident, data)
 
 	return None
+
+def get_dt_seconds(dt):
+	return (dt - epoch).total_seconds()
+
+def compute_reward(db):
+	if not 'mining' in config:
+		return 0
+	if not 'allowDynamicReward' in config['mining'] or not config['mining']['allowDynamicReward']:
+		return config['mining']['reward']
+
+	first = None
+	for x in db.accepted.find({}, {'when': 1}).sort('when', 1).limit(1):
+		first = x['when']
+	if not first:
+		return config['mining']['reward']
+
+	first = get_dt_seconds(first)
+	current = get_dt_seconds(datetime.now())
+
+	# Fetching last computed reward
+	for x in db.reward.find().sort('timestamp', -1).limit(1):
+		if get_dt_seconds(x['timestamp']) + config['mining']['rewardCorrectionInterval'] > current:
+			return x['value']
+
+	value = config['mining']['reward'] * math.exp(-(db.accepted.count() / ((current - first) * 0.0025)))
+	value = float('{0:.4f}'.format(value))
+	db.reward.insert({'value': value, 'timestamp': datetime.now()})
+
+	return value

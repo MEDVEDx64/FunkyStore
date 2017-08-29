@@ -20,7 +20,10 @@ config = {
 	"mining": {
 		"enabled": False,
 		"instanceCode": "editme", # must be 6 chars long, case-insensitive letters or digits
-		"reward": 100.0
+		"reward": 100.0,
+
+		"allowDynamicReward": False, # reward will be lowered depending on mined codes redemption frequency
+		"rewardCorrectionInterval": 15 # seconds
 	},
 
 	# voucher processor settings
