@@ -57,4 +57,8 @@ def get_str(v):
 		else:
 			break
 
-	return ''.join(s).strip()
+	s = ''.join(s).strip()
+	if s.endswith('.'):
+		s += '0'
+
+	return s
