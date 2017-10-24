@@ -45,7 +45,7 @@ def get_balance(db, login):
 
 def get_str(v):
 	if v == 0:
-		return '0.0'
+		return '0'
 
 	if v < 0.0000000001 and v >= 1:
 		return str(v)
@@ -59,6 +59,6 @@ def get_str(v):
 
 	s = ''.join(s).strip()
 	if s.endswith('.'):
-		s += '0'
+		s = s[:-1]
 
 	return s
