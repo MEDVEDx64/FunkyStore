@@ -27,7 +27,7 @@ HOST = config['host']
 # HOST += ':' + str(PORT)
 db = None
 
-COPY = '2015 MEDVEDx64. Thanks to dmitro.'
+COPY = '2014-2022 MEDVEDx64. Thanks to dmitro and AlexX.'
 
 class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_start(self):
@@ -125,7 +125,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('<div style="background-color: #e82"><b>' + q['m'][0] + '</b></div><hr>\n')
 
 	def do_GET(self):
-		if not self.headers['host'] == HOST:
+		if is_host_check_enabled() and not self.headers['host'] == HOST:
 			self.send_error(404, 'Nothing')
 			return
 
@@ -703,6 +703,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.send_error(404, 'Not Found')
 
 	def do_POST(self):
+		if is_host_check_enabled() and not self.headers['host'] == HOST:
+			self.send_error(404, 'Nothing')
+			return
+
 		missing_data_url = '/message?m=Missing some required fields, make sure you filled the form correctly.'
 		url = urlparse.urlparse(self.path)
 		q = urlparse.parse_qs(url.query)
@@ -1106,6 +1110,8 @@ def cook_password(password, login):
 		superpassword[x] ^= superlogin[x]
 	return base64.b64encode(superpassword)
 
+def is_host_check_enabled():
+	return 'respectHostHeader' in config and config['respectHostHeader'] == True
 
 if __name__ == '__main__':
 	dbclient = pymongo.MongoClient(config['dbUri'])
