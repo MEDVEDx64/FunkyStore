@@ -40,12 +40,11 @@ def teleport_to_kernel(nick):
 	Teleporter(nick, -157, 59, 15).start()
 
 class ItemSender(DetachedRconExecutor):
-	def __init__(self, nick, item_id, amount=1, data=0):
+	def __init__(self, nick, item_id, amount=1):
 		super(ItemSender, self).__init__()
 		self.nick = nick
 		self.item_id = item_id
 		self.amount = amount
-		self.data = data
 
 	def execute(self):
 		amount_left = self.amount
@@ -54,5 +53,5 @@ class ItemSender(DetachedRconExecutor):
 			if amount_left < 64:
 				c = amount_left
 			amount_left -= c
-			self.rcon.command('give ' + self.nick + ' ' + self.item_id + ' ' + str(c) + ' ' + self.data)
+			self.rcon.command('give ' + self.nick + ' ' + self.item_id + ' ' + str(c))
 			sleep(0.5)

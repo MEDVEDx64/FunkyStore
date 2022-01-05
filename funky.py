@@ -164,7 +164,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				+ '<input type="text" size="8" name="amount" value="0.0"> '
 				+ '<input type="submit" value="Submit"></form>')
 				self.wfile.write("<h5><b style=\"color: #e11\">Warning:</b> "
-					+ "your order won't be delivered, unless you're in game! (this doesn't affects vouchers above)</h5>")
+					+ "your order won't be delivered, unless you're in game! (this doesn't affect vouchers above)</h5>")
 				is_admin = user_is_admin(username)
 				query = {'in_stock': True}
 				if is_admin:
@@ -230,7 +230,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.html_block_end()
 			if is_sold_items_hidden:
 				self.html_block_start()
-				self.wfile.write('<i style="font-size: 10pt">Some sold-out item entries is not shown, '
+				self.wfile.write('<i style="font-size: 10pt">Some sold-out item entries are not shown, '
 					+ 'check your <a style="color: #436" href="/settings">settings</a> if you want to see them.</i>')
 				self.html_block_end()
 			self.html_end()
@@ -799,18 +799,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							if d['price']:
 								ok, message = money.transfer(db, u, bank_user, d['price'] * amount)
 							if ok:
-								item = itemid
-								data = '0'
-								if ' ' in itemid:
-									s = itemid.strip().split(' ')
-									item = s[0]
-									data = s[1]
 								if 'left' in d:
 									db['items'].update({'item_id': itemid}, {'$set': {'left': d['left'] - amount}})
-								result = default_driver.process(nick, item, amount, data)
-								if result:
-									self.html_redirect('/message?m=Transaction fault: ' + str(result))
-									return
+								rcon.ItemSender(nick, itemid, amount).start()
 								db['sold'].insert({'who': nick, 'what': itemid, 'when': datetime.now(),
 												   'amount': amount, 'price': d['price']})
 							self.html_redirect('/?m=' + message)
