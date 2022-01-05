@@ -124,10 +124,6 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('<div style="background-color: #e82"><b>' + q['m'][0] + '</b></div><hr>\n')
 
 	def do_GET(self):
-		if is_host_check_enabled() and not self.headers['host'] == HOST:
-			self.send_error(404, 'Nothing')
-			return
-
 		url = urlparse.urlparse(self.path)
 
 		if url.path.startswith('/storage'):
@@ -325,7 +321,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				r = rcon.get_rcon()
 				m = db['markets'].find_one({'short_name': q['market'][0]})
 				for c in m['blocks']:
-					b = str(c[0]) + ' ' + str(c[1]) + ' ' + str(c[2])
+					b = str(int(c[0])) + ' ' + str(int(c[1])) + ' ' + str(int(c[2]))
 					for name in m['accept']:
 						resp = r.command('execute if block ' + b + ' ' + m['accept'][name]['itemid'] + ' run summon minecraft:experience_orb ' + b)
 						if resp and resp.startswith('Summoned'):
@@ -341,7 +337,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							sleep(0.25)
 							break
 
-				money.transfer(db, '__RESERVE__', username, reward)
+				if reward > 0:
+					money.transfer(db, '__RESERVE__', username, reward)
 				self.html_redirect('/sell?m=You have earned ' + str(reward) + ' funks.')
 
 			markets = db['markets'].find().sort('text', 1)
@@ -355,8 +352,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write(e['text'].encode('utf-8'))
 				self.wfile.write('</a>')
 				if 'xcoord' in e and 'zcoord' in e and 'markets' in config:
-					self.wfile.write('&nbsp;<a href="' + config['markets']['googleMapUri'] + '#/' + str(e['xcoord']) + '/64/' + str(e['zcoord'])
-						+ '/max/0/0"><img src="/storage/items/map.png" width="20"></a>')
+					self.wfile.write('&nbsp;<a href="' + config['markets']['googleMapUri'] + '#/' + str(int(e['xcoord'])) + '/64/' + str(int(e['zcoord']))
+						+ '/max/' + config['markets']['googleMapLayerName'] + '/0"><img src="/storage/items/map.png" width="16px"></a>')
 				self.wfile.write('<br><x style="font-size: 8pt">')
 				self.wfile.write('<i>' + str(len(e['blocks'])) + ' slots available</i><br>')
 				for a in e['accept']:
@@ -702,10 +699,6 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.send_error(404, 'Not Found')
 
 	def do_POST(self):
-		if is_host_check_enabled() and not self.headers['host'] == HOST:
-			self.send_error(404, 'Nothing')
-			return
-
 		missing_data_url = '/message?m=Missing some required fields, make sure you filled the form correctly.'
 		url = urlparse.urlparse(self.path)
 		q = urlparse.parse_qs(url.query)
@@ -1099,9 +1092,6 @@ def cook_password(password, login):
 	for x in range(0, 32):
 		superpassword[x] ^= superlogin[x]
 	return base64.b64encode(superpassword)
-
-def is_host_check_enabled():
-	return 'respectHostHeader' in config and config['respectHostHeader'] == True
 
 if __name__ == '__main__':
 	dbclient = pymongo.MongoClient(config['dbUri'])
