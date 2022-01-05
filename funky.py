@@ -327,8 +327,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				for c in m['blocks']:
 					b = str(c[0]) + ' ' + str(c[1]) + ' ' + str(c[2])
 					for name in m['accept']:
-						resp = r.command('testforblock ' + b + ' ' + m['accept'][name]['itemid'])
-						if resp and 'Successfully' == resp[:12]:
+						resp = r.command('execute if block ' + b + ' ' + m['accept'][name]['itemid'] + ' run summon minecraft:experience_orb ' + b)
+						if resp and resp.startswith('Summoned'):
 							if 'reward_low' in m['accept'][name]:
 								rnd.seed()
 								reward += round(rnd.random() * (m['accept'][name]['reward']
@@ -356,7 +356,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('</a>')
 				if 'xcoord' in e and 'zcoord' in e and 'markets' in config:
 					self.wfile.write('&nbsp;<a href="' + config['markets']['googleMapUri'] + '#/' + str(e['xcoord']) + '/64/' + str(e['zcoord'])
-						+ '/max/0/0"><img src="/storage/items/map_filled.png" width="20"></a>')
+						+ '/max/0/0"><img src="/storage/items/map.png" width="20"></a>')
 				self.wfile.write('<br><x style="font-size: 8pt">')
 				self.wfile.write('<i>' + str(len(e['blocks'])) + ' slots available</i><br>')
 				for a in e['accept']:
