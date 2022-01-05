@@ -58,7 +58,6 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write(
 			'<html><head><meta http-equiv="refresh" content="1;url=' + url + '"><script type="text/javascript">')
 		self.wfile.write('window.location.href = "' + url + '"</script></head></html>\n')
-		self.html_end()
 
 	def html_main_menu(self, user='__WHO__'):
 		mining = ""
