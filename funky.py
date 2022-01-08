@@ -97,7 +97,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write('<b>Account</b>: ' + u + ', <b>Balance:</b> ' + money.get_str(money.get_balance(db, u)) + 'f\n')
 		self.wfile.write(' (<a href="/logout">Logout</a>) | ')
 
-		if 'mining' in config and 'allowDynamicReward' in config['mining'] and config['mining']['allowDynamicReward']:
+		if 'mining' in config and config['mining']['enabled'] and config['mining']['allowDynamicReward']:
 			value = magic.compute_reward(db) # ensure to use the actual values
 			tail = []
 			for x in db.reward.find().sort('timestamp', -1).limit(2):
