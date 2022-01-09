@@ -10,7 +10,7 @@ from config import config
 """
 
 Funky Code Standard (MagicFSC1, MagicFSC2 implementation)
-These codes is used to share money accounts, money/permission vouchers, server commands, etc.
+These codes are used to share money accounts, money/permission vouchers, server commands, etc.
 
 MagicFSC1 code format:
 xx-111[111]-*
@@ -314,6 +314,29 @@ def gen_single_order(db, amount, owner_login = None):
 		return build_code(head, ident, data)
 
 	return None
+
+def create_freeform_voucher(db, head_digit, origin, data, owner, value, left):
+	if head_digit < 0 or head_digit > 9 or len(data) > 32:
+		return
+
+	head = H_VOUCHER[0]
+	if left > 1:
+		head = H_VOUCHER_REUSABLE[0]
+	head += str(head_digit)
+	ident = None
+	if origin:
+		ident = int(I_MONEY[0] + str(origin).zfill(3))
+	else:
+		ident = int(I_MONEY[0])
+	doc = {'head': head, 'ident': ident, 'data': data.lower()}
+
+	if not db[COLLECTION_NAME].find_one(doc):
+		doc['owner'] = owner
+		doc['value'] = value
+		doc['left'] = left
+
+		db[COLLECTION_NAME].insert(doc)
+		return True
 
 def get_dt_seconds(dt):
 	return (dt - epoch).total_seconds()

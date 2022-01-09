@@ -683,6 +683,19 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						+ '<input name="motd_text" type="text" size="86" value="' + text + '"><br>'
 						+ '<input type="submit" value="Submit"></form>')
 
+				elif q['go'][0] == 'create-a-voucher':
+					self.wfile.write('<h2>Create-a-Voucher</h2>'
+						+ '<p><i>Create a freeform voucher and assign it to someone. '
+						+ 'Please refer to "magic.py" file of the FunkyStore source for origin codes.</i></p>'
+						+ '<div><form method="post" action="admin?go=create-a-voucher" name="create-a-voucher">'
+						+ 'Heading number: <input name="head_digit" type="text" size="3"/><br>'
+						+ 'Origin code: <input name="origin" type="text" size="6"/><br>'
+						+ 'Data: <input name="data" type="text" size="36"/><br>'
+						+ 'Owner: <input name="owner" type="text" size="36" value="' + username + '"/><br>'
+						+ 'Value: <input name="value" type="text" size="16"/><br>'
+						+ 'Left: <input name="left" type="text" size="16"/><br>'
+						+ '<input type="submit" value="Submit"></form></div>')
+
 				else:
 					self.wfile.write('No such console (or not yet implemented).\n')
 
@@ -692,6 +705,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				self.wfile.write('<a href="/admin?go=bought">Who Bought What</a><br>')
 				self.wfile.write('<a href="/admin?go=transactions">Recent Transactions</a><br>')
 				self.wfile.write('<a href="/admin?go=motd">Message of the Day</a><br>')
+				self.wfile.write('<a href="/admin?go=create-a-voucher">Create-a-Voucher</a><br>')
 
 			self.html_end()
 
@@ -1027,6 +1041,21 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						d['text'] = data['motd_text'][0]
 					db['motd'].insert(d)
 					self.html_redirect('/admin?go=motd')
+				elif q['go'][0] == 'create-a-voucher':
+					origin = None
+					if 'origin' in data and len(data['origin'][0]) > 0:
+						origin = int(data['origin'][0])
+
+					if magic.create_freeform_voucher(db,
+						int(data['head_digit'][0]),
+						origin,
+						data['data'][0],
+						data['owner'][0],
+						float(data['value'][0]),
+						int(data['left'][0])):
+						self.html_redirect('/message?m=Success')
+					else:
+						self.html_redirect('/message?m=Error')
 				else:
 					self.send_error(400, 'Bad Request')
 			else:
