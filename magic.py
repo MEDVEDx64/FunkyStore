@@ -166,7 +166,7 @@ def process(code, db, login):
 			# Fake key data
 			entry = {}
 			entry['left'] = 1
-			entry['value'] = compute_reward(db)
+			entry['value'] = compute_reward(db, True)
 
 		if not entry['left']:
 			out['status'] = SCKV['SC_EXPIRED_CODE']
@@ -341,7 +341,7 @@ def create_freeform_voucher(db, head_digit, origin, data, owner, value, left):
 def get_dt_seconds(dt):
 	return (dt - epoch).total_seconds()
 
-def compute_reward(db):
+def compute_reward(db, force_correction=False):
 	if not 'mining' in config:
 		return 0
 	if not 'allowDynamicReward' in config['mining'] or not config['mining']['allowDynamicReward']:
@@ -357,9 +357,10 @@ def compute_reward(db):
 	current = get_dt_seconds(datetime.now())
 
 	# Fetching last computed reward
-	for x in db.reward.find().sort('timestamp', -1).limit(1):
-		if get_dt_seconds(x['timestamp']) + config['mining']['rewardCorrectionInterval'] > current:
-			return x['value']
+	if not force_correction:
+		for x in db.reward.find().sort('timestamp', -1).limit(1):
+			if get_dt_seconds(x['timestamp']) + config['mining']['rewardCorrectionInterval'] > current:
+				return x['value']
 
 	value = config['mining']['reward'] * math.exp(-(db.accepted.count() / ((current - first) * 0.0001)))
 	value = float('{0:.8f}'.format(value))
