@@ -48,7 +48,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_login(self):
 		self.wfile.write('<form name="login" method="post" action="account?do=login">')
 		self.wfile.write(
-			'Login: <input type="text" size="40" name="login"><br>Password: <input name="pwd" type="password" size="40"><br>')
+			'<table><tr><td>Username:</td><td><input type="text" size="22" name="login"></td></tr>'
+			+ '<tr><td>Password:</td><td><input name="pwd" type="password" size="22"></td></tr></table>')
 		self.wfile.write('<input type="submit" value="Login"></form><a href="register">Create an account</a>')
 
 	def html_bad_login(self):
