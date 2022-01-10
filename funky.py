@@ -584,7 +584,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 			nick = db['accounts'].find_one({'login': username}, {'nickname': 1, 'hide_sold': 1})
 			if not nick:
-				nick = 'Steve?'
+				nick = 'Steve'
 			hide_sold = ''
 			if 'hide_sold' in nick and nick['hide_sold']:
 				hide_sold = 'checked="checked"'
@@ -810,8 +810,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									amount = d['left']
 							bank_user = '__BANK__'
 							if not db['accounts'].find_one({'login': bank_user}):
-								db['accounts'].insert({'login': bank_user, 'money': 0.0, 'password': '0',
-													   'locked': True, 'flags': ['money_recv', 'system']})
+								db['accounts'].insert({'login': bank_user, 'nickname': 'Steve', 'money': 0.0, 'password': '0',
+													   'locked': True, 'flags': ['money_recv']})
 							ok, message = True, 'Success'
 							if d['price']:
 								ok, message = money.transfer(db, u, bank_user, d['price'] * amount)
