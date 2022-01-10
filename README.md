@@ -28,8 +28,10 @@ Requirements
 Getting it working
 ------------------
 
-* Copy/move `config_default.py` to `config.py` and edit it
-* Run `python funky.py`.
+* Copy `config_default.py` to `config.py` and edit it;
+* Run `./first_run.py`;
+* Run `./funky.py`.
+
 
 Becoming an administrator
 -------------------------

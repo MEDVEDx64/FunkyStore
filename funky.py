@@ -23,11 +23,8 @@ import os
 
 PORT = config['port']
 HOST = config['host']
-# if not PORT == 80:
-# HOST += ':' + str(PORT)
-db = None
-
 COPY = '2014-2022 MEDVEDx64. Thanks to dmitro and AlexX.'
+db = None
 
 class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_start(self):
@@ -724,7 +721,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			self.send_error(404, 'Not Found')
 
 	def do_POST(self):
-		missing_data_url = '/message?m=Missing some required fields, make sure you filled the form correctly.'
+		missing_data_url = '/message?m=Some required fields are missing or incorrectly filled.'
 		url = urlparse.urlparse(self.path)
 		q = urlparse.parse_qs(url.query)
 		if url.path == '/account':
@@ -744,7 +741,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					else:
 						self.html_bad_login()
 				elif q['do'][0] == 'register':
-					if not 'nickname' in data or data['login'][0][0:2] == '__':
+					if not 'nickname' in data or len(data['login'][0]) < 2 or data['login'][0][0:2] == '__':
 						self.html_redirect(missing_data_url)
 						return
 					acc = db.accounts.find_one({'login': data['login'][0]})
@@ -808,13 +805,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									return
 								if amount > d['left']:
 									amount = d['left']
-							bank_user = '__BANK__'
-							if not db['accounts'].find_one({'login': bank_user}):
-								db['accounts'].insert({'login': bank_user, 'nickname': 'Steve', 'money': 0.0, 'password': '0',
-													   'locked': True, 'flags': ['money_recv']})
 							ok, message = True, 'Success'
 							if d['price']:
-								ok, message = money.transfer(db, u, bank_user, d['price'] * amount)
+								ok, message = money.transfer(db, u, '__BANK__', d['price'] * amount)
 							if ok:
 								if 'left' in d:
 									db['items'].update({'item_id': itemid}, {'$set': {'left': d['left'] - amount}})
