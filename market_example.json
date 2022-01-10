@@ -1,0 +1,67 @@
+{
+    "disabled":false,
+    "short_name":"eastland1",
+    "text":"Eastland Town",
+    "xcoord":5320,
+    "zcoord":1608,
+    "accept":{
+        "Torch":{
+            "itemid":"torch",
+            "reward":0.1,
+            "restock_id":"torch",
+            "restock_mul":1
+        },
+        "Coal Block":{
+            "itemid":"coal_block",
+            "reward":1.8,
+            "restock_id":"coal",
+            "restock_mul":9
+        },
+        "Iron Block":{
+            "itemid":"iron_block",
+            "reward":6.5
+        }
+    },
+    "blocks":[
+        [
+            5320,
+            64,
+            1610
+        ],
+        [
+            5319,
+            64,
+            1610
+        ],
+        [
+            5318,
+            64,
+            1610
+        ],
+        [
+            5320,
+            64,
+            1609
+        ],
+        [
+            5319,
+            64,
+            1609
+        ],
+        [
+            5318,
+            64,
+            1609
+        ],
+        [
+            5320,
+            64,
+            1608
+        ],
+        [
+            5319,
+            64,
+            1608
+        ]
+    ]
+}
