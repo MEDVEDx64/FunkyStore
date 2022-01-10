@@ -191,6 +191,9 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						in_stock = ''
 						if i['in_stock']:
 							in_stock = 'checked="checked"'
+						restock = ''
+						if 'restock' in i and i['restock']:
+							restock = 'checked="checked"'
 						left = ''
 						if 'left' in i:
 							left = str(i['left'])
@@ -202,6 +205,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 											i['price']) + '">' \
 										 + ' left <input type="text" name="left" size="6" value="' + left +'">'
 										 + ' in stock <input type="checkbox" name="in_stock" ' + in_stock + '>' \
+										 + ' restock <input type="checkbox" name="restock" ' + restock + '>' \
 										 + ' <input type="submit" value="Update"></form><x style="color: #335">[' + i[
 											 'item_id'] + ']</x>' \
 										 + ' <a href="/item?do=delete&itemid=' + i['item_id'] \
@@ -212,11 +216,12 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					self.html_block_start()
 					self.wfile.write('<form name="item-insert" style="margin: 0" method="post" ' \
 									 + 'action="item?do=insert">' \
-									 + 'item_id[ data] <input type="text" size="24" name="itemid">' \
+									 + 'item_id <input type="text" size="24" name="itemid">' \
 									 + ' text <input type="text" size="32" name="text">' \
 									 + ' price <input type="text" size="8" name="price">' \
 									 + ' left <input type="text" name="left" size="6">'
 									 + ' in stock <input type="checkbox" name="in_stock" checked="true">' \
+									 + ' restock <input type="checkbox" name="restock">' \
 									 + ' <input type="submit" value="Add"></form>\n')
 					self.html_block_end()
 
@@ -335,6 +340,14 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							r.command('setblock ' + b + ' air')
 							db['deals'].insert({'short_name': m['short_name'], 'block': name,
 								'who': username, 'reward': m['accept'][name]['reward'], 'when': datetime.now()})
+
+							if 'restock_id' in m['accept'][name]:
+								restock_item = db['items'].find_one({'restock': True,
+									'item_id': m['accept'][name]['restock_id'], 'left': {'$exists': True}})
+								if restock_item:
+									db['items'].update({'_id': restock_item['_id']},
+										{'$set': {'left': int(restock_item['left'] + m['accept'][name]['restock_mul'])}})
+
 							sleep(0.25)
 							break
 
@@ -832,10 +845,13 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				in_stock = False
 				if 'in_stock' in data and data['in_stock'][0] == 'on':
 					in_stock = True
+				restock = False
+				if 'restock' in data and data['restock'][0] == 'on':
+					restock = True
 
 				if q['do'][0] == 'insert':
 					d = {'item_id': data['itemid'][0], 'text': data['text'][0], 'price': float(data['price'][0]),
-							 'in_stock': in_stock, 'timestamp': datetime.now()}
+							 'in_stock': in_stock, 'restock': restock, 'timestamp': datetime.now()}
 					if 'left' in data:
 						d['left'] = int(data['left'][0])
 					try:
@@ -845,7 +861,7 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						self.html_redirect(missing_data_url)
 
 				elif q['do'][0] == 'update':
-					set_query = {'in_stock': in_stock}
+					set_query = {'in_stock': in_stock, 'restock': restock}
 					unset_query = {}
 					if 'text' in data:
 						set_query['text'] = data['text'][0]
