@@ -48,8 +48,8 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def html_login(self):
 		self.wfile.write('<form name="login" method="post" action="account?do=login">')
 		self.wfile.write(
-			'<table><tr><td>Username:</td><td><input type="text" size="22" name="login"></td></tr>'
-			+ '<tr><td>Password:</td><td><input name="pwd" type="password" size="22"></td></tr></table>')
+			'<table><tr><td>Username:</td><td><input type="text" size="24" name="login"></td></tr>'
+			+ '<tr><td>Password:</td><td><input name="pwd" type="password" size="24"></td></tr></table>')
 		self.wfile.write('<input type="submit" value="Login"></form><a href="register">Create an account</a>')
 
 	def html_bad_login(self):
@@ -467,13 +467,10 @@ class FunkyHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						self.wfile.write('<br>Message: <i>' + q['message'][0] + '</i>\n')
 
 			else:
-				self.wfile.write(
-					'<form name="register" method="post" action="account?do=register">Create an account:<br>')
-				self.wfile.write(
-					'Login: <input type="text" size="40" name="login"><br>Nickname: <input type="text" size="40" ')
-				self.wfile.write('name="nickname"><br>Password: <input name="pwd" type="password" ')
-				self.wfile.write(
-					'size="40"><br><input type="submit" value="Sign up"></form><h3>')
+				self.wfile.write('<form name="register" method="post" action="account?do=register"><h2>Create an account:</h2>'
+					+'<table><tr><td>Username:</td><td><input type="text" size="24" name="login"></td></tr><tr><td>Nickname:</td><td><input type="text" size="24" '
+					+ 'name="nickname"></td></tr><tr><td>Password:</td><td><input name="pwd" type="password" '
+					+ 'size="24"></td></tr></table><input type="submit" value="Sign up"></form>')
 
 			self.html_end()
 
